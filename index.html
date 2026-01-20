@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>JUDGE_OS_v26_GITHUB_EDITION</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --neon: #00f0ff; --ai: #bc13fe; --vr: #2db300; --bg: #000; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        #layout { display: grid; grid-template-rows: 1fr 400px; height: 100vh; }
+        #map { width: 100%; border-bottom: 1px solid #222; }
+        #console { background: #050505; display: grid; grid-template-columns: 350px 1fr 400px; }
+        .module { padding: 20px; border-right: 1px solid #111; overflow-y: auto; }
+        .tag { font-size: 10px; color: #444; letter-spacing: 2px; margin-bottom: 15px; }
+        .v-card { background: rgba(255,255,255,0.02); padding: 20px; border-left: 3px solid var(--neon); }
+        .v-id { font-size: 35px; font-weight: bold; color: var(--neon); }
+        #log { font-size: 10px; color: #555; line-height: 1.5; }
+        .m-bus { width: 15px; height: 15px; background: var(--neon); border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div id="layout">
+    <div id="map"></div>
+    <div id="console">
+        <div class="module">
+            <div class="tag">UNIT_TRACKER</div>
+            <div class="v-card">
+                <div id="ui-id" class="v-id">AWAIT</div>
+                <div id="ui-data" style="margin-top:10px; font-size:12px;">Select unit from map...</div>
+            </div>
+        </div>
+        <div class="module">
+            <div class="tag">G-FORCE_ANALYSIS</div>
+            <canvas id="gChart" style="height:250px;"></canvas>
+        </div>
+        <div class="module">
+            <div class="tag">FIREBASE_REALTIME_STREAM</div>
+            <div id="log"></div>
+        </div>
+    </div>
+</div>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyAsCBiakmw92y60t4Z5PETtyuToY4EOnTA",
+    authDomain: "developme-1a747.firebaseapp.com",
+    databaseURL: "https://developme-1a747-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "developme-1a747",
+    storageBucket: "developme-1a747.firebasestorage.app",
+    appId: "1:467417750458:web:f1ae85b3f27dc85114db83"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const state = { units: new Map(), markers: new Map(), selected: null, chart: null, gBuf: Array(50).fill(0) };
+const map = new maplibregl.Map({ container: 'map', style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', center: [24.94, 60.17], zoom: 12 });
+const client = mqtt.connect('wss://mqtt.hsl.fi:443/');
+client.on('connect', () => client.subscribe('/hfp/v2/journey/ongoing/vp/bus/#'));
+client.on('message', (t, m) => {
+    const d = JSON.parse(m).VP; if (!d?.veh) return;
+    if (!state.units.has(d.veh)) {
+        const el = document.createElement('div'); el.className = 'm-bus';
+        el.onclick = () => { state.selected = d.veh; if(!state.chart) initChart(); document.getElementById('ui-id').innerText = d.veh; };
+        state.markers.set(d.veh, new maplibregl.Marker({element: el}).setLngLat([d.long, d.lat]).addTo(map));
+        state.units.set(d.veh, { id: d.veh, lastSpd: d.spd, lastTs: Date.now() });
+    }
+    const u = state.units.get(d.veh);
+    const g = Math.abs(d.spd - u.lastSpd) / (((Date.now() - u.lastTs)/1000) * 9.81 || 9.81);
+    u.lastSpd = d.spd; u.lastTs = Date.now();
+    state.markers.get(d.veh).setLngLat([d.long, d.lat]);
+    if (state.selected === d.veh) {
+        state.gBuf.push(g); state.gBuf.shift();
+        document.getElementById('ui-data').innerHTML = `SPD: ${(d.spd*3.6).toFixed(1)} km/h<br>LINE: ${d.desi}<br>G: ${g.toFixed(4)}`;
+        if (state.chart) { state.chart.data.datasets[0].data = state.gBuf; state.chart.update('none'); }
+        if (g > 0.1 || Date.now() - (u.lW || 0) > 3000) {
+            u.lW = Date.now();
+            const p = { t: Date.now(), g: g.toFixed(4), v: d.spd, line: d.desi };
+            db.ref(`live/${d.veh}`).set(p); db.ref(`history/${d.veh}`).push(p);
+            const l = document.getElementById('log');
+            l.innerHTML = `<div>[${new Date().toLocaleTimeString()}] SYNC -> ${d.veh} (G:${g.toFixed(2)})</div>` + l.innerHTML;
+        }
+    }
+});
+function initChart() {
+    state.chart = new Chart(document.getElementById('gChart'), {
+        type: 'line', data: { labels: Array(50).fill(''), datasets: [{ data: [], borderColor: '#bc13fe', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(188,19,254,0.1)' }] },
+        options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { y: { min: 0, max: 0.5 } }, plugins: { legend: { display: false } } }
+    });
+}
+</script>
+</body>
+</html>
