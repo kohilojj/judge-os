@@ -3,165 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JUDGE_OS_v40_MOBILE</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+    <title>JUDGE_DASH_v42</title>
     <style>
         :root {
-            --neon: #00f0ff; --ai: #bc13fe; --danger: #ff003c;
-            --success: #2db300; --bg: #050505;
+            --neon: #00f0ff;
+            --ai: #bc13fe;
+            --danger: #ff003c;
+            --bg: #050505;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; 
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background: var(--bg); 
+            font-family: 'Segoe UI', 'Consolas', monospace;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; color: white;
         }
 
-        /* MOBILE HEADER */
-        header {
-            padding: 15px; border-bottom: 1px solid rgba(188, 19, 254, 0.3);
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
-        }
-        .logo { font-weight: 900; letter-spacing: 2px; color: var(--neon); font-size: 18px; }
-
-        /* MAIN CONTENT - SCROLLABLE */
-        main {
-            flex: 1; overflow-y: auto; padding: 15px;
-            display: flex; flex-direction: column; gap: 20px;
+        /* PELIALUE */
+        #game-window {
+            position: relative;
+            width: 100vw; height: 100vh;
+            max-width: 900px; max-height: 500px;
+            background: linear-gradient(180deg, #000 0%, #0a0a0f 100%);
+            border: 2px solid var(--ai);
+            box-shadow: 0 0 50px rgba(188, 19, 254, 0.3);
+            overflow: hidden;
         }
 
-        /* THE CAMERA BOX - OPTIMIZED FOR TOUCH */
-        .scan-trigger {
-            width: 100%; min-height: 250px; background: #000;
-            border: 2px dashed #222; border-radius: 15px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
+        /* TAUSTAN GRID */
+        .bg-grid {
+            position: absolute; width: 200%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(188, 19, 254, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.1) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: moveGrid 3s linear infinite;
         }
-        .scan-trigger:active { border-color: var(--neon); background: rgba(0,240,255,0.05); }
+        @keyframes moveGrid { from { transform: translateX(0); } to { transform: translateX(-60px); } }
 
-        #preview-img { width: 100%; height: 100%; object-fit: contain; display: none; }
+        /* PELAAJA */
+        #player {
+            position: absolute; width: 45px; height: 45px;
+            background: var(--neon);
+            border: 3px solid #fff;
+            box-shadow: 0 0 20px var(--neon);
+            bottom: 60px; left: 80px;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+
+        /* ESTEET (PIIKIT) */
+        .spike {
+            position: absolute; width: 45px; height: 45px;
+            background: var(--danger);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            bottom: 60px;
+            filter: drop-shadow(0 0 10px var(--danger));
+        }
+
+        /* LATTIA */
+        #floor {
+            position: absolute; bottom: 0; width: 100%; height: 60px;
+            background: #000; border-top: 3px solid var(--ai);
+            box-shadow: 0 -5px 20px rgba(188, 19, 254, 0.2);
+            z-index: 5;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 20px; left: 20px;
+            font-size: 24px; font-weight: 900; letter-spacing: 3px;
+            color: var(--neon); z-index: 20; text-shadow: 0 0 10px var(--neon);
+        }
+
+        /* GAME OVER RUUTU */
+        #death-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; backdrop-filter: blur(5px);
+        }
+
+        h1 { font-size: 50px; color: var(--danger); text-shadow: 0 0 20px var(--danger); margin-bottom: 20px; }
         
-        /* 70-TOOL MOBILE GRID */
-        .status-bar {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+        button {
+            background: var(--ai); color: white; border: none; padding: 15px 40px;
+            font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px;
+            box-shadow: 0 0 20px var(--ai); transition: 0.3s;
         }
-        .stat-card { background: #111; padding: 12px; border-radius: 8px; border: 1px solid #1a1a1a; text-align: center; }
-        .stat-label { font-size: 9px; color: #555; text-transform: uppercase; }
-        .stat-val { font-size: 14px; color: var(--neon); font-weight: bold; }
+        button:hover { transform: scale(1.1); filter: brightness(1.2); }
 
-        /* AI FEEDBACK AREA */
-        .feedback-box {
-            background: #000; border: 1px solid var(--ai); border-radius: 10px;
-            padding: 20px; min-height: 120px; box-shadow: 0 0 20px rgba(188,19,254,0.1);
-        }
-        .feedback-text { font-size: 14px; line-height: 1.6; color: #ccc; }
-
-        /* FLOATING TASK LIST BUTTON */
-        #task-btn {
-            position: fixed; bottom: 20px; right: 20px;
-            width: 60px; height: 60px; background: var(--ai);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 20px var(--ai); font-size: 24px; z-index: 100;
-        }
-
-        /* HIDDEN FILE INPUT WITH CAPTURE */
-        #cam-input { display: none; }
-
-        .scan-line {
-            position: absolute; width: 100%; height: 3px; background: var(--neon);
-            top: 0; box-shadow: 0 0 15px var(--neon); animation: scan 3s linear infinite; display: none;
-        }
-        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
     </style>
 </head>
-<body>
+<body onmousedown="handleInput()" ontouchstart="handleInput()">
 
-<header>
-    <div class="logo">JUDGE_OS v40</div>
-    <div id="g_id_onload"
-         data-client_id="213389113664-s65htka59riaq23iin8shl330v4ai370.apps.googleusercontent.com"
-         data-callback="onSignIn">
+    <div id="game-window">
+        <div class="bg-grid"></div>
+        <div id="hud">SCORE: <span id="score-val">0</span></div>
+        
+        <div id="player"></div>
+        <div id="floor"></div>
+
+        <div id="death-screen">
+            <h1>CRASHED</h1>
+            <div id="final-score" style="margin-bottom: 20px; font-size: 20px;"></div>
+            <button onclick="restart()">RESTART</button>
+        </div>
     </div>
-    <div class="g_id_signin" data-type="icon" data-shape="circle"></div>
-</header>
-
-<main>
-    <div class="status-bar">
-        <div class="stat-card"><div class="stat-label">AI_MODE</div><div class="stat-val">SOCRATIC</div></div>
-        <div class="stat-card"><div class="stat-label">LINK_STATUS</div><div id="link-status" class="stat-val" style="color:var(--danger)">OFFLINE</div></div>
-    </div>
-
-    <div class="scan-trigger" onclick="document.getElementById('cam-input').click()">
-        <div class="scan-line" id="line"></div>
-        <div id="cam-icon" style="font-size: 50px; color: #1a1a1a;">📸</div>
-        <div id="tap-text" style="font-size: 10px; color: #444; margin-top: 10px;">KOSKETA AVATAKSESI KAMERA</div>
-        <img id="preview-img">
-        <input type="file" id="cam-input" accept="image/*" capture="environment" onchange="handleCapture(event)">
-    </div>
-
-    <div class="feedback-box">
-        <div style="font-size: 9px; color: var(--ai); margin-bottom: 10px;">ANALYSIS_LOG:</div>
-        <div id="ai-out" class="feedback-text">Odotetaan visuaalista dataa tehtävästä...</div>
-    </div>
-</main>
-
-<div id="task-btn" onclick="alert('Tehtävälista tulossa mobiilivalikkoon!')">📝</div>
 
 <script>
-// --- FIREBASE ---
-const firebaseConfig = {
-    apiKey: "AIzaSyAsCBiakmw92y60t4Z5PETtyuToY4EOnTA",
-    authDomain: "developme-1a747.firebaseapp.com",
-    databaseURL: "https://developme-1a747-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "developme-1a747",
-    appId: "1:467417750458:web:f1ae85b3f27dc85114db83"
-};
-firebase.initializeApp(firebaseConfig);
+    const player = document.getElementById('player');
+    const scoreVal = document.getElementById('score-val');
+    const deathScreen = document.getElementById('death-screen');
+    const finalScore = document.getElementById('final-score');
 
-// --- MOBILE CAMERA HANDLER ---
-function handleCapture(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    // Pelin muuttujat
+    let gameActive = true;
+    let score = 0;
+    let py = 60; // Pelaajan Y-sijainti
+    let velocity = 0;
+    const gravity = 0.7;
+    const jumpPower = 13;
+    let obstacles = [];
+    let speed = 6;
 
-    const reader = new FileReader();
-    document.getElementById('cam-icon').style.display = 'none';
-    document.getElementById('tap-text').style.display = 'none';
-    document.getElementById('line').style.display = 'block';
-    
-    const preview = document.getElementById('preview-img');
+    // Näppäimistötuki
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') handleInput();
+    });
 
-    reader.onload = function(e) {
-        preview.src = e.target.result;
-        preview.style.display = 'block';
-        processAI();
-    };
-    reader.readAsDataURL(file);
-}
+    function handleInput() {
+        if (!gameActive) return;
+        if (py === 60) { // Hyppy vain jos maassa
+            velocity = jumpPower;
+        }
+    }
 
-function processAI() {
-    const out = document.getElementById('ai-out');
-    out.innerHTML = "<span style='color:var(--neon)'>SKANNATAAN...</span><br>Luetaan käsialaa ja analysoidaan logiikkaa...";
+    // Peli-looppi
+    function update() {
+        if (!gameActive) return;
 
-    setTimeout(() => {
-        out.innerHTML = `
-            <b style="color:var(--ai)">SENTINEL:</b> Näen tehtäväsi. <br><br>
-            Olet ratkaissut x:n arvon, mutta huomasitko, että tehtävässä pyydettiin vastausta metreinä, ei senttimetreinä? <br><br>
-            <i>Vinkki: Jaa tuloksesi sadalla.</i>
-        `;
-        document.getElementById('line').style.display = 'none';
-    }, 3000);
-}
+        // Fysiikka
+        velocity -= gravity;
+        py += velocity;
 
-function onSignIn(res) {
-    document.getElementById('link-status').innerText = "ONLINE";
-    document.getElementById('link-status').style.color = "var(--success)";
-}
+        if (py <= 60) {
+            py = 60;
+            velocity = 0;
+            player.style.transform = 'rotate(0deg)';
+        } else {
+            // Pyöriminen hypyn aikana
+            player.style.transform = `rotate(${score * 2}deg)`; 
+        }
+
+        player.style.bottom = py + 'px';
+
+        // Esteiden liikuttelu
+        obstacles.forEach((obs, index) => {
+            let ox = parseInt(obs.style.left);
+            ox -= speed;
+            obs.style.left = ox + 'px';
+
+            // Törmäyksen tunnistus (hitbox)
+            const pRect = player.getBoundingClientRect();
+            const oRect = obs.getBoundingClientRect();
+
+            if (
+                pRect.right - 10 > oRect.left &&
+                pRect.left + 10 < oRect.right &&
+                pRect.bottom - 5 > oRect.top
+            ) {
+                gameOver();
+            }
+
+            // Pisteet ja poisto
+            if (ox < -50) {
+                obs.remove();
+                obstacles.splice(index, 1);
+                score++;
+                scoreVal.innerText = score;
+                // Nopeutetaan peliä hitaasti
+                speed += 0.1;
+            }
+        });
+
+        requestAnimationFrame(update);
+    }
+
+    // Esteiden luonti
+    function spawn() {
+        if (!gameActive) return;
+        
+        const obs = document.createElement('div');
+        obs.className = 'spike';
+        obs.style.left = '1000px';
+        document.getElementById('game-window').appendChild(obs);
+        obstacles.push(obs);
+
+        // Satunnainen väli seuraavaan esteeseen (1s - 2.5s)
+        let nextSpawn = Math.random() * 1500 + 800;
+        setTimeout(spawn, nextSpawn);
+    }
+
+    function gameOver() {
+        gameActive = false;
+        deathScreen.style.display = 'flex';
+        finalScore.innerText = "FINAL SCORE: " + score;
+    }
+
+    function restart() {
+        location.reload();
+    }
+
+    // Käynnistys
+    update();
+    spawn();
+
 </script>
 </body>
 </html>
