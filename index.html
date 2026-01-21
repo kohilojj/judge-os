@@ -3,224 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JUDGE_DASH_v42</title>
+    <title>JUDGE_DASH_v43_CHAOS</title>
     <style>
         :root {
             --neon: #00f0ff;
             --ai: #bc13fe;
             --danger: #ff003c;
-            --bg: #050505;
+            --bg: #020205;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         
         body { 
             background: var(--bg); 
-            font-family: 'Segoe UI', 'Consolas', monospace;
+            font-family: 'Segoe UI', sans-serif;
             display: flex; align-items: center; justify-content: center;
             height: 100vh; color: white;
         }
 
-        /* PELIALUE */
         #game-window {
             position: relative;
             width: 100vw; height: 100vh;
             max-width: 900px; max-height: 500px;
-            background: linear-gradient(180deg, #000 0%, #0a0a0f 100%);
+            background: #000;
             border: 2px solid var(--ai);
-            box-shadow: 0 0 50px rgba(188, 19, 254, 0.3);
             overflow: hidden;
         }
 
-        /* TAUSTAN GRID */
+        /* DYNAAMINEN TAUSTA */
         .bg-grid {
             position: absolute; width: 200%; height: 100%;
             background-image: 
-                linear-gradient(rgba(188, 19, 254, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(188, 19, 254, 0.1) 1px, transparent 1px);
-            background-size: 60px 60px;
-            animation: moveGrid 3s linear infinite;
+                linear-gradient(rgba(188, 19, 254, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
         }
-        @keyframes moveGrid { from { transform: translateX(0); } to { transform: translateX(-60px); } }
 
-        /* PELAAJA */
         #player {
-            position: absolute; width: 45px; height: 45px;
+            position: absolute; width: 40px; height: 40px;
             background: var(--neon);
             border: 3px solid #fff;
             box-shadow: 0 0 20px var(--neon);
             bottom: 60px; left: 80px;
             z-index: 10;
-            transition: transform 0.1s;
         }
 
-        /* ESTEET (PIIKIT) */
+        /* ESTETYIPIT */
+        .obstacle { position: absolute; bottom: 60px; z-index: 8; }
+        
+        /* Piikki */
         .spike {
-            position: absolute; width: 45px; height: 45px;
+            width: 40px; height: 40px;
             background: var(--danger);
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            bottom: 60px;
-            filter: drop-shadow(0 0 10px var(--danger));
         }
 
-        /* LATTIA */
+        /* Tuplapiikki */
+        .double-spike {
+            width: 80px; height: 40px;
+            background: var(--danger);
+            clip-path: polygon(25% 0%, 0% 100%, 50% 100%, 75% 0%, 50% 100%, 100% 100%);
+        }
+
+        /* Korkea muuri */
+        .wall {
+            width: 30px; height: 60px;
+            background: #ffaa00;
+            border: 2px solid #fff;
+            box-shadow: 0 0 15px #ffaa00;
+        }
+
         #floor {
             position: absolute; bottom: 0; width: 100%; height: 60px;
-            background: #000; border-top: 3px solid var(--ai);
-            box-shadow: 0 -5px 20px rgba(188, 19, 254, 0.2);
-            z-index: 5;
+            background: #080808; border-top: 3px solid var(--ai);
         }
 
-        /* HUD */
         #hud {
             position: absolute; top: 20px; left: 20px;
-            font-size: 24px; font-weight: 900; letter-spacing: 3px;
-            color: var(--neon); z-index: 20; text-shadow: 0 0 10px var(--neon);
+            font-size: 20px; font-weight: bold; color: var(--neon); z-index: 20;
         }
 
-        /* GAME OVER RUUTU */
         #death-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; backdrop-filter: blur(5px);
+            z-index: 100;
         }
 
-        h1 { font-size: 50px; color: var(--danger); text-shadow: 0 0 20px var(--danger); margin-bottom: 20px; }
-        
         button {
             background: var(--ai); color: white; border: none; padding: 15px 40px;
-            font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px;
-            box-shadow: 0 0 20px var(--ai); transition: 0.3s;
+            font-size: 20px; cursor: pointer; border-radius: 5px; margin-top: 20px;
         }
-        button:hover { transform: scale(1.1); filter: brightness(1.2); }
-
     </style>
 </head>
-<body onmousedown="handleInput()" ontouchstart="handleInput()">
+<body onmousedown="jump()" ontouchstart="jump()">
 
     <div id="game-window">
-        <div class="bg-grid"></div>
-        <div id="hud">SCORE: <span id="score-val">0</span></div>
-        
+        <div class="bg-grid" id="grid"></div>
+        <div id="hud">SCORE: <span id="score-val">0</span> | SPEED: <span id="speed-val">1.0</span></div>
         <div id="player"></div>
         <div id="floor"></div>
 
         <div id="death-screen">
-            <h1>CRASHED</h1>
-            <div id="final-score" style="margin-bottom: 20px; font-size: 20px;"></div>
-            <button onclick="restart()">RESTART</button>
+            <h1 style="color:var(--danger); font-size: 40px;">CRITICAL_FAILURE</h1>
+            <button onclick="location.reload()">REBOOT SYSTEM</button>
         </div>
     </div>
 
 <script>
     const player = document.getElementById('player');
     const scoreVal = document.getElementById('score-val');
+    const speedVal = document.getElementById('speed-val');
     const deathScreen = document.getElementById('death-screen');
-    const finalScore = document.getElementById('final-score');
+    const grid = document.getElementById('grid');
 
-    // Pelin muuttujat
     let gameActive = true;
     let score = 0;
-    let py = 60; // Pelaajan Y-sijainti
+    let py = 60;
     let velocity = 0;
     const gravity = 0.7;
-    const jumpPower = 13;
+    const jumpPower = 14;
+    
+    let baseSpeed = 6;
+    let currentSpeed = 6;
     let obstacles = [];
-    let speed = 6;
+    let gridPos = 0;
 
-    // Näppäimistötuki
-    window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' || e.code === 'ArrowUp') handleInput();
-    });
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space') jump(); });
 
-    function handleInput() {
-        if (!gameActive) return;
-        if (py === 60) { // Hyppy vain jos maassa
-            velocity = jumpPower;
-        }
+    function jump() {
+        if (py === 60 && gameActive) velocity = jumpPower;
     }
 
-    // Peli-looppi
+    function spawnObstacle() {
+        if (!gameActive) return;
+
+        const obs = document.createElement('div');
+        obs.className = 'obstacle';
+        
+        // ARVOTAAN ESTETYYPPI
+        const type = Math.random();
+        if (type < 0.5) {
+            obs.classList.add('spike'); // Tavallinen piikki
+        } else if (type < 0.8) {
+            obs.classList.add('double-spike'); // Leveä tuplapiikki
+        } else {
+            obs.classList.add('wall'); // Korkea este
+        }
+
+        obs.style.left = '1000px';
+        document.getElementById('game-window').appendChild(obs);
+        obstacles.push(obs);
+
+        // VAIHTELEVA RYTMI: Seuraava este tulee 0.7s - 2.5s päästä
+        let nextSpawn = Math.random() * 1800 + 700;
+        setTimeout(spawnObstacle, nextSpawn);
+    }
+
     function update() {
         if (!gameActive) return;
 
         // Fysiikka
         velocity -= gravity;
         py += velocity;
-
-        if (py <= 60) {
-            py = 60;
-            velocity = 0;
-            player.style.transform = 'rotate(0deg)';
-        } else {
-            // Pyöriminen hypyn aikana
-            player.style.transform = `rotate(${score * 2}deg)`; 
-        }
-
+        if (py <= 60) { py = 60; velocity = 0; }
         player.style.bottom = py + 'px';
+        player.style.transform = py > 60 ? `rotate(${score * 10}deg)` : 'rotate(0deg)';
 
-        // Esteiden liikuttelu
+        // Taustan liike
+        gridPos -= currentSpeed / 2;
+        grid.style.transform = `translateX(${gridPos % 50}px)`;
+
+        // Nopeutetaan peliä hitaasti pisteiden mukaan
+        currentSpeed = baseSpeed + (score * 0.15);
+        speedVal.innerText = (currentSpeed / 6).toFixed(1) + "x";
+
+        // Esteiden käsittely
         obstacles.forEach((obs, index) => {
             let ox = parseInt(obs.style.left);
-            ox -= speed;
+            ox -= currentSpeed;
             obs.style.left = ox + 'px';
 
-            // Törmäyksen tunnistus (hitbox)
+            // Hitbox tarkistus
             const pRect = player.getBoundingClientRect();
             const oRect = obs.getBoundingClientRect();
 
             if (
-                pRect.right - 10 > oRect.left &&
-                pRect.left + 10 < oRect.right &&
+                pRect.right - 8 > oRect.left &&
+                pRect.left + 8 < oRect.right &&
                 pRect.bottom - 5 > oRect.top
             ) {
-                gameOver();
+                gameActive = false;
+                deathScreen.style.display = 'flex';
             }
 
-            // Pisteet ja poisto
-            if (ox < -50) {
+            if (ox < -100) {
                 obs.remove();
                 obstacles.splice(index, 1);
                 score++;
                 scoreVal.innerText = score;
-                // Nopeutetaan peliä hitaasti
-                speed += 0.1;
             }
         });
 
         requestAnimationFrame(update);
     }
 
-    // Esteiden luonti
-    function spawn() {
-        if (!gameActive) return;
-        
-        const obs = document.createElement('div');
-        obs.className = 'spike';
-        obs.style.left = '1000px';
-        document.getElementById('game-window').appendChild(obs);
-        obstacles.push(obs);
-
-        // Satunnainen väli seuraavaan esteeseen (1s - 2.5s)
-        let nextSpawn = Math.random() * 1500 + 800;
-        setTimeout(spawn, nextSpawn);
-    }
-
-    function gameOver() {
-        gameActive = false;
-        deathScreen.style.display = 'flex';
-        finalScore.innerText = "FINAL SCORE: " + score;
-    }
-
-    function restart() {
-        location.reload();
-    }
-
-    // Käynnistys
+    spawnObstacle();
     update();
-    spawn();
-
 </script>
 </body>
 </html>
