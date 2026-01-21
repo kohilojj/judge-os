@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BOTTLE_FLIP_MEGA_v46</title>
+    <title>JUDGE_OS_v49_ULTRA</title>
     <style>
         :root { --neon: #00f0ff; --ai: #bc13fe; --gold: #ffcc00; --bg: #050508; }
         * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
@@ -11,43 +11,41 @@
 
         #stage {
             position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 850px;
-            background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            border: 2px solid #111; box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            background: linear-gradient(180deg, #0f0c29 0%, #000 100%);
+            border: 2px solid #111; overflow: hidden;
         }
 
-        /* PULLO */
-        #bottle-wrapper { position: absolute; width: 34px; height: 80px; z-index: 100; transform-origin: bottom center; }
-        .b-body { position: absolute; bottom: 0; width: 34px; height: 50px; background: rgba(0, 240, 255, 0.4); border: 2px solid var(--neon); border-radius: 6px; }
-        .b-neck { position: absolute; bottom: 50px; left: 10px; width: 14px; height: 20px; background: rgba(0, 240, 255, 0.4); border: 2px solid var(--neon); }
-        .b-cap { position: absolute; bottom: 70px; left: 8px; width: 18px; height: 10px; background: #ff003c; border-radius: 2px; }
+        /* --- HAHMO (Base64-koodattu kuva) --- */
+        #char-wrapper { 
+            position: absolute; width: 60px; height: 120px; z-index: 100; 
+            transform-origin: bottom center;
+        }
+        #char-img {
+            width: 100%; height: 100%; object-fit: contain;
+            filter: drop-shadow(0 0 15px var(--neon));
+        }
 
-        /* OBJEKTIT / TASOT */
+        /* OBJEKTIT */
         .obj {
-            position: absolute; border-top: 4px solid var(--ai);
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.3); padding-top: 5px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: absolute; border-top: 5px solid var(--ai);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
-
-        /* KERÄTTÄVÄT TIMANTIT */
-        .diamond {
-            position: absolute; width: 15px; height: 15px; background: var(--gold);
-            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-            animation: bounce 1s infinite alternate; box-shadow: 0 0 10px var(--gold);
-        }
-        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
 
         /* HUD */
         #hud { position: absolute; top: 40px; width: 100%; text-align: center; z-index: 200; }
-        #score { font-size: 50px; font-weight: 900; color: var(--neon); }
-        #power-meter { width: 120px; height: 6px; background: #111; margin: 10px auto; border-radius: 3px; }
-        #power-bar { width: 0%; height: 100%; background: var(--ai); transition: 0.1s; }
+        #score { font-size: 60px; font-weight: 900; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
+        #power-meter { width: 150px; height: 6px; background: #111; margin: 10px auto; border-radius: 3px; }
+        #power-bar { width: 0%; height: 100%; background: var(--ai); box-shadow: 0 0 10px var(--ai); }
+        #slow-ui { color: var(--neon); font-size: 12px; letter-spacing: 5px; opacity: 0; transition: 0.2s; }
 
         #death {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: none; flex-direction: column; 
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column; 
             align-items: center; justify-content: center; z-index: 1000;
         }
+        button { background: var(--ai); color: white; border: none; padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 4px; }
     </style>
 </head>
 <body onmousedown="charge()" onmouseup="release()" ontouchstart="charge()" ontouchend="release()">
@@ -56,137 +54,131 @@
         <div id="hud">
             <div id="score">0</div>
             <div id="power-meter"><div id="power-bar"></div></div>
+            <div id="slow-ui">SLOW-MOTION</div>
         </div>
-        <div id="bottle-wrapper">
-            <div class="b-cap"></div><div class="b-neck"></div><div class="b-body"></div>
+        
+        <div id="char-wrapper">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAACWCAYAAAAk8Z6XAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJTSURBVHgB7d3BbtpAEIbhf6YmN6nU93+mUqtWpZ6mNzcXAnG6I0C8BPr/S7Is7Y49O2uXpC8GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAL6vX67Nls7PjW6vj28Vp1Ovp80/G388f/6fKPrE0P6vsz7mP78f1vI67Xp/W+Tof6+v6/Of66zrr6+T49fjr7vjr+Lp+t/7z7vO4v6m97p87R6f1uL8Xz7W/tXp8Pr7O97i/vX9OfO5X9ufW0f6mXsf+Xv05Or6O8df9fT/G3Xrv76m9/fN+P7f2597ffv+78TjG39WfE/vneHz+/fr8+/98/z/7m379v/278R77u/77f92v7Pfr8+/r8/6m1uN+TqyfE8fH53mN9XX/vP9+fH4fP6796nNifa59fO7XeY31uX/un/vX8ev+vP89AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAL8f60+69uW5r7Wrr3Gf/z9qPz55Z67S07v3tP78f3+/78f2+78e478f9vB/38367z/t577p97p9v7p87p9vv/ffO67j35v6mXrdv7p9v7p/797z2+zH2z/fP++fE+9v68+9/T3xe+9v9e97f1fPj+P7/997j9tO/Pye+v/be3859/669/599Ym1+ZuvfE+vfx9fn3mff789/N97X/vO79ufEev97fP/7fe599v3+OfE+9mO7/+6v+pX9fv977vM6xu8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDfu70BqK69C0xV3H4AAAAASUVORK5CYII=" id="char-img">
         </div>
+
         <div id="death">
-            <h1 style="color: var(--danger); margin-bottom: 20px;">SYSTEM CRASHED</h1>
-            <button onclick="location.reload()" style="padding: 15px 30px; background: var(--neon); border: none; font-weight: bold;">RESTART</button>
+            <h1 style="color: #ff003c; margin-bottom: 20px;">CRITICAL FAILURE</h1>
+            <button onclick="location.reload()">REBOOT SYSTEM</button>
         </div>
     </div>
 
 <script>
-    const bottle = document.getElementById('bottle-wrapper');
-    const scoreEl = document.getElementById('score');
+    // --- AUDIO SYSTEM ---
+    const aCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(f, t, d, v) {
+        const o = aCtx.createOscillator(); const g = aCtx.createGain();
+        o.type = t; o.frequency.setValueAtTime(f, aCtx.currentTime);
+        o.connect(g); g.connect(aCtx.destination);
+        g.gain.setValueAtTime(v, aCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, aCtx.currentTime + d);
+        o.start(); o.stop(aCtx.currentTime + d);
+    }
+
+    // --- GAME ENGINE ---
+    const char = document.getElementById('char-wrapper');
+    const scoreText = document.getElementById('score');
     const pBar = document.getElementById('power-bar');
     const stage = document.getElementById('stage');
+    const slowUI = document.getElementById('slow-ui');
 
     let score = 0, power = 0, charging = false, flipping = false;
-    let bx = 50, by = 0, vx = 0, vy = 0, vr = 0, rotation = 0;
-    const gravity = 0.25;
+    let bx = 50, by = 0, vx = 0, vy = 0, vr = 0, rot = 0;
+    let tScale = 1.0;
+    const gravity = 0.26;
 
-    // OBJEKTI-GENERAATTORI (50+ variaatiota)
-    const objThemes = [
-        { name: "SOHVA", w: 140, h: 50, color: "#4a2c2a" },
-        { name: "TV", w: 100, h: 80, color: "#111" },
-        { name: "KIRJA", w: 40, h: 15, color: "#800" },
-        { name: "PYLVÄS", w: 50, h: 180, color: "#004" },
-        { name: "LAATIKKO", w: 80, h: 80, color: "#543" },
-        { name: "HÄKKI", w: 70, h: 90, color: "#333" },
-        { name: "PÖYTÄ", w: 120, h: 20, color: "#642" },
-        { name: "HULLU_TASO", w: 30, h: 250, color: var(--ai) }
+    // 50 TASOA GENERAATTORI
+    const themes = [
+        {n:"SOHVA", w:150, h:40, c:"#422"}, {n:"TV", w:100, h:70, c:"#111"},
+        {n:"TOLPPA", w:40, h:200, c:"#004"}, {n:"KIRJA", w:50, h:15, c:"#600"},
+        {n:"PYLVÄS", w:60, h:150, c:"#333"}, {n:"LANKKU", w:120, h:10, c:"#542"}
     ];
 
-    let currentObj = spawnObj(50, 600, 0);
-    let nextObj = spawnObj(240, 500, 1);
-    let diamond = null;
+    let currentObj = createObj(50, 600, 0);
+    let nextObj = createObj(250, 500, 1);
 
-    function spawnObj(x, y, themeIdx) {
-        const t = objThemes[themeIdx % objThemes.length];
-        const div = document.createElement('div');
-        div.className = 'obj';
-        div.style.width = t.w + 'px';
-        div.style.height = t.h + 'px';
-        div.style.left = x + 'px';
-        div.style.top = y + 'px';
-        div.style.background = t.color;
-        div.innerHTML = t.name;
-        stage.appendChild(div);
-        return { x, y, w: t.w, h: t.h };
+    function createObj(x, y, idx) {
+        const t = themes[idx % themes.length];
+        const d = document.createElement('div');
+        d.className = 'obj'; d.style.width = t.w+'px'; d.style.height = t.h+'px';
+        d.style.left = x+'px'; d.style.top = y+'px'; d.style.background = t.c;
+        d.innerHTML = t.n; stage.appendChild(d);
+        return {x, y, w:t.w, h:t.h};
     }
 
-    function spawnDiamond() {
-        if(diamond) diamond.el.remove();
-        let dx = nextObj.x + (nextObj.w / 2) - 7;
-        let dy = nextObj.y - 100;
-        const dEl = document.createElement('div');
-        dEl.className = 'diamond';
-        dEl.style.left = dx + 'px';
-        dEl.style.top = dy + 'px';
-        stage.appendChild(dEl);
-        diamond = { x: dx, y: dy, el: dEl };
+    function charge() { 
+        if(!flipping) { 
+            charging = true; 
+            if(aCtx.state === 'suspended') aCtx.resume();
+            beep(200, 'sawtooth', 0.3, 0.05);
+        } 
+    }
+    
+    function release() { 
+        if(charging) { 
+            charging = false; flipping = true;
+            vx = (power/10) * 1.8; vy = (power/10) * 4.6; vr = 8 + (power/4);
+            beep(400, 'sine', 0.2, 0.1);
+        } 
     }
 
-    function charge() { if(!flipping) charging = true; }
-    function release() { if(charging) { charging = false; launch(); } }
-
-    function launch() {
-        flipping = true;
-        vx = (power / 10) * 1.8;
-        vy = (power / 10) * 4.5;
-        vr = 10 + (power / 4);
-    }
-
-    function gameLoop() {
+    function loop() {
         if (charging) {
             power = Math.min(power + 2, 100);
             pBar.style.width = power + '%';
-            bottle.style.transform = `scaleY(${1 - power/500})`;
+            char.style.transform = `scaleY(${1 - power/500})`;
         }
         if (flipping) {
-            vy -= gravity; bx += vx; by += vy; rotation += vr;
-            bottle.style.left = bx + 'px';
-            bottle.style.bottom = by + 'px';
-            bottle.style.transform = `rotate(${rotation}deg)`;
+            // SLOW-MO TARKISTUS
+            let distY = (stage.offsetHeight - by) - nextObj.y;
+            let distX = Math.abs((bx+30) - (nextObj.x + nextObj.w/2));
+            if (vy < 0 && distY < 150 && distY > 0 && distX < 100) {
+                tScale = 0.3; slowUI.style.opacity = 1;
+            } else { tScale = 1.0; slowUI.style.opacity = 0; }
 
-            // Timantin keräys
-            if (diamond) {
-                let dRect = diamond.el.getBoundingClientRect();
-                let bRect = bottle.getBoundingClientRect();
-                if(!(bRect.right < dRect.left || bRect.left > dRect.right || bRect.bottom < dRect.top || bRect.top > dRect.bottom)) {
-                    score += 5; scoreEl.innerText = score;
-                    diamond.el.remove(); diamond = null;
-                }
-            }
+            vy -= gravity * tScale; bx += vx * tScale; by += vy * tScale; rot += vr * tScale;
+            char.style.left = bx + 'px'; char.style.bottom = by + 'px';
+            char.style.transform = `rotate(${rot}deg)`;
 
-            if (by < -100) { document.getElementById('death').style.display = 'flex'; flipping = false; }
+            if (by < -100) { beep(50, 'square', 0.5, 0.2); document.getElementById('death').style.display='flex'; flipping=false; }
 
             if (vy < 0) {
-                let footY = stage.offsetHeight - by;
-                let cx = bx + 17;
+                let fy = stage.offsetHeight - by;
+                let cx = bx + 30;
                 [currentObj, nextObj].forEach(o => {
-                    if (footY >= o.y && footY <= o.y + 30 && cx > o.x && cx < o.x + o.w) {
-                        let normR = Math.abs(rotation % 360);
-                        if (normR < 35 || normR > 325) {
-                            if (o === nextObj) { score++; scoreEl.innerText = score; advance(o); }
-                            else { flipping = false; rotation = 0; vy = 0; vx = 0; }
-                        } else { document.getElementById('death').style.display = 'flex'; flipping = false; }
+                    if (fy >= o.y && fy <= o.y + 30 && cx > o.x && cx < o.x + o.w) {
+                        let nr = Math.abs(rot % 360);
+                        if (nr < 45 || nr > 315) {
+                            if (o === nextObj) { score++; scoreText.innerText = score; beep(800, 'sine', 0.2, 0.1); advance(o); }
+                            else { flipping = false; rot = 0; vy = 0; vx = 0; }
+                        } else { beep(50, 'square', 0.5, 0.2); document.getElementById('death').style.display='flex'; flipping=false; }
                     }
                 });
             }
         }
-        requestAnimationFrame(gameLoop);
+        requestAnimationFrame(loop);
     }
 
-    function advance(hitObj) {
-        document.querySelectorAll('.obj').forEach(el => { if(parseInt(el.style.left) < hitObj.x) el.remove(); });
-        currentObj = hitObj;
-        let nx = 150 + Math.random() * 100;
-        let ny = 300 + Math.random() * 300;
-        let nt = Math.floor(Math.random() * 50); // Arpoo teeman 50 vaihtoehdosta (modulolla)
-        nextObj = spawnObj(nx, ny, nt);
-        if(Math.random() > 0.5) spawnDiamond();
-        
-        // Reset bottle position to new platform
-        flipping = false; power = 0; pBar.style.width = '0%';
-        bx = currentObj.x + (currentObj.w/2) - 17;
+    function advance(hit) {
+        document.querySelectorAll('.obj').forEach(el => { if(parseInt(el.style.left) < hit.x) el.remove(); });
+        currentObj = hit;
+        let nx = hit.x + 150 + Math.random()*150;
+        let ny = 300 + Math.random()*300;
+        if(nx > 400) nx = 350;
+        nextObj = createObj(nx, ny, Math.floor(Math.random()*50));
+        flipping = false; power = 0; pBar.style.width = '0%'; tScale = 1.0;
+        bx = currentObj.x + (currentObj.w/2) - 30;
         by = stage.offsetHeight - currentObj.y;
-        rotation = 0;
+        rot = 0;
     }
 
-    advance(currentObj);
-    gameLoop();
+    bx = currentObj.x + (currentObj.w/2) - 30;
+    by = stage.offsetHeight - currentObj.y;
+    loop();
 </script>
 </body>
 </html>
