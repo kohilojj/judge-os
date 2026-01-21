@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JUDGE_DASH_v43_CHAOS</title>
+    <title>BOTTLE_FLIP_v44_PRO</title>
     <style>
         :root {
             --neon: #00f0ff;
             --ai: #bc13fe;
-            --danger: #ff003c;
-            --bg: #020205;
+            --bg: #0a0a0f;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
@@ -21,194 +20,235 @@
             height: 100vh; color: white;
         }
 
-        #game-window {
+        #game-stage {
             position: relative;
             width: 100vw; height: 100vh;
-            max-width: 900px; max-height: 500px;
-            background: #000;
+            max-width: 600px; max-height: 800px;
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #050505 100%);
             border: 2px solid var(--ai);
-            overflow: hidden;
+            box-shadow: 0 0 50px rgba(188, 19, 254, 0.2);
         }
 
-        /* DYNAAMINEN TAUSTA */
-        .bg-grid {
-            position: absolute; width: 200%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(188, 19, 254, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(188, 19, 254, 0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-        }
-
-        #player {
-            position: absolute; width: 40px; height: 40px;
-            background: var(--neon);
-            border: 3px solid #fff;
-            box-shadow: 0 0 20px var(--neon);
-            bottom: 60px; left: 80px;
+        /* PULLO */
+        #bottle {
+            position: absolute;
+            width: 30px; height: 70px;
+            background: rgba(0, 240, 255, 0.3);
+            border: 2px solid var(--neon);
+            border-radius: 5px 5px 2px 2px;
             z-index: 10;
+            transform-origin: center bottom;
+        }
+        #bottle::before { /* Korkki */
+            content: ""; position: absolute; top: -10px; left: 50%;
+            transform: translateX(-50%); width: 12px; height: 10px;
+            background: #fff; border-radius: 2px;
         }
 
-        /* ESTETYIPIT */
-        .obstacle { position: absolute; bottom: 60px; z-index: 8; }
-        
-        /* Piikki */
-        .spike {
-            width: 40px; height: 40px;
-            background: var(--danger);
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        /* TASOT (PÖYDÄT) */
+        .platform {
+            position: absolute;
+            background: linear-gradient(180deg, #333 0%, #111 100%);
+            border-top: 4px solid var(--ai);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
-        /* Tuplapiikki */
-        .double-spike {
-            width: 80px; height: 40px;
-            background: var(--danger);
-            clip-path: polygon(25% 0%, 0% 100%, 50% 100%, 75% 0%, 50% 100%, 100% 100%);
-        }
-
-        /* Korkea muuri */
-        .wall {
-            width: 30px; height: 60px;
-            background: #ffaa00;
-            border: 2px solid #fff;
-            box-shadow: 0 0 15px #ffaa00;
-        }
-
-        #floor {
-            position: absolute; bottom: 0; width: 100%; height: 60px;
-            background: #080808; border-top: 3px solid var(--ai);
-        }
-
+        /* HUD */
         #hud {
-            position: absolute; top: 20px; left: 20px;
-            font-size: 20px; font-weight: bold; color: var(--neon); z-index: 20;
+            position: absolute; top: 30px; left: 0; width: 100%;
+            text-align: center; z-index: 100;
         }
-
-        #death-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100;
+        .score { font-size: 40px; font-weight: 900; color: var(--neon); text-shadow: 0 0 15px var(--neon); }
+        .power-bar-bg {
+            width: 200px; height: 10px; background: #222; margin: 10px auto;
+            border-radius: 5px; overflow: hidden;
         }
+        #power-fill { width: 0%; height: 100%; background: var(--ai); transition: 0.1s; }
 
+        #msg {
+            position: absolute; top: 40%; width: 100%; text-align: center;
+            display: none; z-index: 200;
+        }
         button {
-            background: var(--ai); color: white; border: none; padding: 15px 40px;
-            font-size: 20px; cursor: pointer; border-radius: 5px; margin-top: 20px;
+            background: var(--neon); color: #000; border: none; padding: 15px 40px;
+            font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px;
         }
     </style>
 </head>
-<body onmousedown="jump()" ontouchstart="jump()">
+<body>
 
-    <div id="game-window">
-        <div class="bg-grid" id="grid"></div>
-        <div id="hud">SCORE: <span id="score-val">0</span> | SPEED: <span id="speed-val">1.0</span></div>
-        <div id="player"></div>
-        <div id="floor"></div>
+    <div id="game-stage">
+        <div id="hud">
+            <div class="score" id="score-val">0</div>
+            <div class="power-bar-bg"><div id="power-fill"></div></div>
+            <div style="font-size: 10px; letter-spacing: 2px; color: #444;">PAINA PITKÄÄN LADATAKSESI</div>
+        </div>
 
-        <div id="death-screen">
-            <h1 style="color:var(--danger); font-size: 40px;">CRITICAL_FAILURE</h1>
-            <button onclick="location.reload()">REBOOT SYSTEM</button>
+        <div id="bottle"></div>
+
+        <div id="msg">
+            <h1 style="font-size: 50px; color: var(--ai); margin-bottom: 20px;">FLIP FAILED</h1>
+            <button onclick="location.reload()">TRY AGAIN</button>
         </div>
     </div>
 
 <script>
-    const player = document.getElementById('player');
+    const bottle = document.getElementById('bottle');
+    const powerFill = document.getElementById('power-fill');
     const scoreVal = document.getElementById('score-val');
-    const speedVal = document.getElementById('speed-val');
-    const deathScreen = document.getElementById('death-screen');
-    const grid = document.getElementById('grid');
+    const msg = document.getElementById('msg');
+    const stage = document.getElementById('game-stage');
 
-    let gameActive = true;
     let score = 0;
-    let py = 60;
-    let velocity = 0;
-    const gravity = 0.7;
-    const jumpPower = 14;
+    let power = 0;
+    let isCharging = false;
+    let isFlipping = false;
     
-    let baseSpeed = 6;
-    let currentSpeed = 6;
-    let obstacles = [];
-    let gridPos = 0;
+    // Fysiikka-arvot
+    let bx = 50; let by = 0; // Pullon sijainti suhteessa tasoon
+    let rotation = 0;
+    let vx = 0; let vy = 0;
+    let vr = 0; // Pyörimisnopeus
+    const gravity = 0.25;
 
-    window.addEventListener('keydown', (e) => { if (e.code === 'Space') jump(); });
+    // Tasojen hallinta
+    let currentPlatform = { x: 30, y: 500, w: 100 };
+    let nextPlatform = { x: 250, y: 450, w: 80 };
 
-    function jump() {
-        if (py === 60 && gameActive) velocity = jumpPower;
+    function createPlatform(p, isCurrent) {
+        const div = document.createElement('div');
+        div.className = 'platform';
+        div.style.left = p.x + 'px';
+        div.style.top = p.y + 'px';
+        div.style.width = p.w + 'px';
+        div.style.height = '300px';
+        if(!isCurrent) div.id = 'next-p';
+        stage.appendChild(div);
     }
 
-    function spawnObstacle() {
-        if (!gameActive) return;
+    function init() {
+        createPlatform(currentPlatform, true);
+        createPlatform(nextPlatform, false);
+        resetBottle();
+    }
 
-        const obs = document.createElement('div');
-        obs.className = 'obstacle';
-        
-        // ARVOTAAN ESTETYYPPI
-        const type = Math.random();
-        if (type < 0.5) {
-            obs.classList.add('spike'); // Tavallinen piikki
-        } else if (type < 0.8) {
-            obs.classList.add('double-spike'); // Leveä tuplapiikki
-        } else {
-            obs.classList.add('wall'); // Korkea este
+    function resetBottle() {
+        isFlipping = false;
+        power = 0;
+        powerFill.style.width = '0%';
+        bx = currentPlatform.x + (currentPlatform.w / 2) - 15;
+        by = stage.offsetHeight - currentPlatform.y;
+        rotation = 0;
+        bottle.style.left = bx + 'px';
+        bottle.style.bottom = by + 'px';
+        bottle.style.transform = `rotate(0deg)`;
+    }
+
+    // LATAUS JA HYPPY
+    window.onmousedown = window.ontouchstart = () => {
+        if (!isFlipping) isCharging = true;
+    };
+
+    window.onmouseup = window.ontouchend = () => {
+        if (isCharging) {
+            isCharging = false;
+            flip();
         }
+    };
 
-        obs.style.left = '1000px';
-        document.getElementById('game-window').appendChild(obs);
-        obstacles.push(obs);
-
-        // VAIHTELEVA RYTMI: Seuraava este tulee 0.7s - 2.5s päästä
-        let nextSpawn = Math.random() * 1800 + 700;
-        setTimeout(spawnObstacle, nextSpawn);
+    function flip() {
+        isFlipping = true;
+        vx = power * 0.15;
+        vy = power * 0.45;
+        vr = power * 0.8; // Pyöriminen voiman mukaan
     }
 
     function update() {
-        if (!gameActive) return;
+        if (isCharging) {
+            power = Math.min(power + 2, 100);
+            powerFill.style.width = power + '%';
+            bottle.style.transform = `scaleY(${1 - (power/400)})`; // Puristus-efekti
+        }
 
-        // Fysiikka
-        velocity -= gravity;
-        py += velocity;
-        if (py <= 60) { py = 60; velocity = 0; }
-        player.style.bottom = py + 'px';
-        player.style.transform = py > 60 ? `rotate(${score * 10}deg)` : 'rotate(0deg)';
+        if (isFlipping) {
+            vy -= gravity;
+            bx += vx;
+            by += vy;
+            rotation += vr;
 
-        // Taustan liike
-        gridPos -= currentSpeed / 2;
-        grid.style.transform = `translateX(${gridPos % 50}px)`;
+            bottle.style.left = bx + 'px';
+            bottle.style.bottom = by + 'px';
+            bottle.style.transform = `rotate(${rotation}deg)`;
 
-        // Nopeutetaan peliä hitaasti pisteiden mukaan
-        currentSpeed = baseSpeed + (score * 0.15);
-        speedVal.innerText = (currentSpeed / 6).toFixed(1) + "x";
+            // TÖRMÄYS TARKISTUS
+            if (vy < 0) { // Vain kun pullo putoaa
+                let bottleBottom = stage.offsetHeight - by;
+                let landingX = bx + 15;
 
-        // Esteiden käsittely
-        obstacles.forEach((obs, index) => {
-            let ox = parseInt(obs.style.left);
-            ox -= currentSpeed;
-            obs.style.left = ox + 'px';
+                // Tarkistetaan osuuko tasoon
+                let p = (landingX > nextPlatform.x && landingX < nextPlatform.x + nextPlatform.w) ? nextPlatform : 
+                        (landingX > currentPlatform.x && landingX < currentPlatform.x + currentPlatform.w) ? currentPlatform : null;
 
-            // Hitbox tarkistus
-            const pRect = player.getBoundingClientRect();
-            const oRect = obs.getBoundingClientRect();
-
-            if (
-                pRect.right - 8 > oRect.left &&
-                pRect.left + 8 < oRect.right &&
-                pRect.bottom - 5 > oRect.top
-            ) {
-                gameActive = false;
-                deathScreen.style.display = 'flex';
+                if (p && bottleBottom >= p.y && bottleBottom <= p.y + 20) {
+                    checkLanding(p);
+                }
             }
 
-            if (ox < -100) {
-                obs.remove();
-                obstacles.splice(index, 1);
-                score++;
-                scoreVal.innerText = score;
+            // Pelialueelta putoaminen
+            if (by < -100 || bx > stage.offsetWidth) {
+                gameOver();
             }
-        });
-
+        }
         requestAnimationFrame(update);
     }
 
-    spawnObstacle();
+    function checkLanding(p) {
+        // Tarkistetaan onko pullo suorassa (n. 360 asteen monikerrat)
+        let normalizedRotation = Math.abs(rotation % 360);
+        if (normalizedRotation < 15 || normalizedRotation > 345) {
+            if (p === nextPlatform) {
+                success();
+            } else {
+                // Laskeuduttiin takaisin samalle pöydälle
+                isFlipping = false;
+                rotation = 0;
+                by = stage.offsetHeight - p.y;
+                bottle.style.bottom = by + 'px';
+                bottle.style.transform = `rotate(0deg)`;
+            }
+        } else {
+            gameOver();
+        }
+    }
+
+    function success() {
+        score++;
+        scoreVal.innerText = score;
+        
+        // Siirretään tasot
+        const oldP = document.getElementById('next-p');
+        if(oldP) oldP.remove();
+        
+        currentPlatform = nextPlatform;
+        nextPlatform = {
+            x: Math.random() * (stage.offsetWidth - 100) + 50,
+            y: 400 + (Math.random() * 100),
+            w: Math.max(60, 100 - (score * 2)) // Tasot pienenevät
+        };
+        
+        document.querySelectorAll('.platform')[0].remove();
+        createPlatform(currentPlatform, true);
+        createPlatform(nextPlatform, false);
+        
+        resetBottle();
+    }
+
+    function gameOver() {
+        gameActive = false;
+        msg.style.display = 'block';
+    }
+
+    init();
     update();
 </script>
 </body>
