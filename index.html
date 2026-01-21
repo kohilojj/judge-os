@@ -2,183 +2,216 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JUDGE_OS_v49_ULTRA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JORMA RUN: TEACHER ATTACK</title>
     <style>
-        :root { --neon: #00f0ff; --ai: #bc13fe; --gold: #ffcc00; --bg: #050508; }
-        * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; color: white; }
+        :root { --jorma: #ff3333; --ope: #444; --bg: #222; --floor: #8d6e63; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; }
 
-        #stage {
-            position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 850px;
-            background: linear-gradient(180deg, #0f0c29 0%, #000 100%);
-            border: 2px solid #111; overflow: hidden;
+        #game-container {
+            position: relative; width: 800px; height: 400px;
+            background: linear-gradient(to bottom, #1a1a1a, #333);
+            border: 4px solid #fff; overflow: hidden;
         }
 
-        /* --- HAHMO (Base64-koodattu kuva) --- */
-        #char-wrapper { 
-            position: absolute; width: 60px; height: 120px; z-index: 100; 
-            transform-origin: bottom center;
+        /* JORMA */
+        #jorma {
+            position: absolute; width: 40px; height: 60px;
+            background: var(--jorma); border: 3px solid #000;
+            border-radius: 5px; z-index: 10;
         }
-        #char-img {
-            width: 100%; height: 100%; object-fit: contain;
-            filter: drop-shadow(0 0 15px var(--neon));
+        #jorma::after { /* Jorman lippis */
+            content: ""; position: absolute; top: 0; right: -5px;
+            width: 15px; height: 8px; background: #000;
         }
 
-        /* OBJEKTIT */
-        .obj {
-            position: absolute; border-top: 5px solid var(--ai);
+        /* VIHOLLISET (OPETTAJAT) */
+        .teacher {
+            position: absolute; width: 40px; height: 65px;
+            background: var(--ope); border: 2px solid #fff;
+            z-index: 5; transition: transform 0.1s;
+        }
+        .teacher::before { /* Opettajan lasit */
+            content: "👓"; position: absolute; top: 10px; left: 5px; font-size: 20px;
+        }
+
+        /* KERÄTTÄVÄT (KOEPAPERIT) */
+        .paper {
+            position: absolute; width: 25px; height: 30px;
+            background: #fff; border: 1px solid #ccc;
             display: flex; align-items: center; justify-content: center;
-            font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.2);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            color: red; font-weight: bold; font-size: 12px;
         }
 
         /* HUD */
-        #hud { position: absolute; top: 40px; width: 100%; text-align: center; z-index: 200; }
-        #score { font-size: 60px; font-weight: 900; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
-        #power-meter { width: 150px; height: 6px; background: #111; margin: 10px auto; border-radius: 3px; }
-        #power-bar { width: 0%; height: 100%; background: var(--ai); box-shadow: 0 0 10px var(--ai); }
-        #slow-ui { color: var(--neon); font-size: 12px; letter-spacing: 5px; opacity: 0; transition: 0.2s; }
-
-        #death {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column; 
-            align-items: center; justify-content: center; z-index: 1000;
+        #hud {
+            position: absolute; top: 10px; left: 10px; color: #fff;
+            font-size: 20px; z-index: 100; text-shadow: 2px 2px #000;
         }
-        button { background: var(--ai); color: white; border: none; padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        
+        #floor {
+            position: absolute; bottom: 0; width: 2000px; height: 40px;
+            background: var(--floor); border-top: 4px solid #5d4037;
+        }
+
+        #msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; display: none; z-index: 1000; background: rgba(0,0,0,0.8);
+            padding: 20px; border: 2px solid red;
+        }
     </style>
 </head>
-<body onmousedown="charge()" onmouseup="release()" ontouchstart="charge()" ontouchend="release()">
+<body>
 
-    <div id="stage">
-        <div id="hud">
-            <div id="score">0</div>
-            <div id="power-meter"><div id="power-bar"></div></div>
-            <div id="slow-ui">SLOW-MOTION</div>
-        </div>
-        
-        <div id="char-wrapper">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAACWCAYAAAAk8Z6XAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJTSURBVHgB7d3BbtpAEIbhf6YmN6nU93+mUqtWpZ6mNzcXAnG6I0C8BPr/S7Is7Y49O2uXpC8GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAL6vX67Nls7PjW6vj28Vp1Ovp80/G388f/6fKPrE0P6vsz7mP78f1vI67Xp/W+Tof6+v6/Of66zrr6+T49fjr7vjr+Lp+t/7z7vO4v6m97p87R6f1uL8Xz7W/tXp8Pr7O97i/vX9OfO5X9ufW0f6mXsf+Xv05Or6O8df9fT/G3Xrv76m9/fN+P7f2597ffv+78TjG39WfE/vneHz+/fr8+/98/z/7m379v/278R77u/77f92v7Pfr8+/r8/6m1uN+TqyfE8fH53mN9XX/vP9+fH4fP6796nNifa59fO7XeY31uX/un/vX8ev+vP89AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAL8f60+69uW5r7Wrr3Gf/z9qPz55Z67S07v3tP78f3+/78f2+78e478f9vB/38367z/t577p97p9v7p87p9vv/ffO67j35v6mXrdv7p9v7p/797z2+zH2z/fP++fE+9v68+9/T3xe+9v9e97f1fPj+P7/997j9tO/Pye+v/be3859/669/599Ym1+ZuvfE+vfx9fn3mff789/N97X/vO79ufEev97fP/7fe599v3+OfE+9mO7/+6v+pX9fv977vM6xu8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDfu70BqK69C0xV3H4AAAAASUVORK5CYII=" id="char-img">
-        </div>
-
-        <div id="death">
-            <h1 style="color: #ff003c; margin-bottom: 20px;">CRITICAL FAILURE</h1>
-            <button onclick="location.reload()">REBOOT SYSTEM</button>
+    <div id="game-container">
+        <div id="hud">JORMA: <span id="score">0</span> | VÄLTÄ OPETTAJIA!</div>
+        <div id="jorma"></div>
+        <div id="floor"></div>
+        <div id="msg">
+            <h1 style="color: red;">OPETTAJA SAI KIINNI!</h1>
+            <p style="color: white;">Jorma joutui jälki-istuntoon.</p>
+            <button onclick="location.reload()" style="margin-top:20px; padding: 10px; cursor:pointer;">Yritä uudelleen</button>
         </div>
     </div>
 
 <script>
-    // --- AUDIO SYSTEM ---
-    const aCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function beep(f, t, d, v) {
-        const o = aCtx.createOscillator(); const g = aCtx.createGain();
-        o.type = t; o.frequency.setValueAtTime(f, aCtx.currentTime);
-        o.connect(g); g.connect(aCtx.destination);
-        g.gain.setValueAtTime(v, aCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, aCtx.currentTime + d);
-        o.start(); o.stop(aCtx.currentTime + d);
+    const jorma = document.getElementById('jorma');
+    const container = document.getElementById('game-container');
+    const scoreEl = document.getElementById('score');
+    const msg = document.getElementById('msg');
+    const floor = document.getElementById('floor');
+
+    // Pelin tila
+    let score = 0;
+    let gameActive = true;
+    let jormaPos = { x: 50, y: 300, vx: 0, vy: 0 };
+    let keys = {};
+    let teachers = [];
+    let papers = [];
+
+    // Vakioarvot
+    const gravity = 0.8;
+    const jumpPower = -15;
+    const speed = 5;
+
+    // Kontrollit
+    window.onkeydown = (e) => keys[e.code] = true;
+    window.onkeyup = (e) => keys[e.code] = false;
+
+    // Luodaan opettajia
+    function spawnTeacher() {
+        if(!gameActive) return;
+        const t = document.createElement('div');
+        t.className = 'teacher';
+        let x = 800 + Math.random() * 400;
+        t.style.left = x + 'px';
+        t.style.bottom = '40px';
+        container.appendChild(t);
+        teachers.push({ el: t, x: x, speed: 3 + Math.random() * 3 });
+        setTimeout(spawnTeacher, 2000 + Math.random() * 2000);
     }
 
-    // --- GAME ENGINE ---
-    const char = document.getElementById('char-wrapper');
-    const scoreText = document.getElementById('score');
-    const pBar = document.getElementById('power-bar');
-    const stage = document.getElementById('stage');
-    const slowUI = document.getElementById('slow-ui');
-
-    let score = 0, power = 0, charging = false, flipping = false;
-    let bx = 50, by = 0, vx = 0, vy = 0, vr = 0, rot = 0;
-    let tScale = 1.0;
-    const gravity = 0.26;
-
-    // 50 TASOA GENERAATTORI
-    const themes = [
-        {n:"SOHVA", w:150, h:40, c:"#422"}, {n:"TV", w:100, h:70, c:"#111"},
-        {n:"TOLPPA", w:40, h:200, c:"#004"}, {n:"KIRJA", w:50, h:15, c:"#600"},
-        {n:"PYLVÄS", w:60, h:150, c:"#333"}, {n:"LANKKU", w:120, h:10, c:"#542"}
-    ];
-
-    let currentObj = createObj(50, 600, 0);
-    let nextObj = createObj(250, 500, 1);
-
-    function createObj(x, y, idx) {
-        const t = themes[idx % themes.length];
-        const d = document.createElement('div');
-        d.className = 'obj'; d.style.width = t.w+'px'; d.style.height = t.h+'px';
-        d.style.left = x+'px'; d.style.top = y+'px'; d.style.background = t.c;
-        d.innerHTML = t.n; stage.appendChild(d);
-        return {x, y, w:t.w, h:t.h};
+    // Luodaan koepapereita
+    function spawnPaper() {
+        if(!gameActive) return;
+        const p = document.createElement('div');
+        p.className = 'paper';
+        p.innerHTML = "A+";
+        let x = 800;
+        let y = 150 + Math.random() * 150;
+        p.style.left = x + 'px';
+        p.style.bottom = y + 'px';
+        container.appendChild(p);
+        papers.push({ el: p, x: x, y: y });
+        setTimeout(spawnPaper, 1500);
     }
 
-    function charge() { 
-        if(!flipping) { 
-            charging = true; 
-            if(aCtx.state === 'suspended') aCtx.resume();
-            beep(200, 'sawtooth', 0.3, 0.05);
-        } 
-    }
-    
-    function release() { 
-        if(charging) { 
-            charging = false; flipping = true;
-            vx = (power/10) * 1.8; vy = (power/10) * 4.6; vr = 8 + (power/4);
-            beep(400, 'sine', 0.2, 0.1);
-        } 
-    }
+    function update() {
+        if (!gameActive) return;
 
-    function loop() {
-        if (charging) {
-            power = Math.min(power + 2, 100);
-            pBar.style.width = power + '%';
-            char.style.transform = `scaleY(${1 - power/500})`;
+        // Jorman liike
+        if (keys['ArrowLeft']) jormaPos.vx = -speed;
+        else if (keys['ArrowRight']) jormaPos.vx = speed;
+        else jormaPos.vx = 0;
+
+        if (keys['Space'] && jormaPos.y === 300) {
+            jormaPos.vy = jumpPower;
         }
-        if (flipping) {
-            // SLOW-MO TARKISTUS
-            let distY = (stage.offsetHeight - by) - nextObj.y;
-            let distX = Math.abs((bx+30) - (nextObj.x + nextObj.w/2));
-            if (vy < 0 && distY < 150 && distY > 0 && distX < 100) {
-                tScale = 0.3; slowUI.style.opacity = 1;
-            } else { tScale = 1.0; slowUI.style.opacity = 0; }
 
-            vy -= gravity * tScale; bx += vx * tScale; by += vy * tScale; rot += vr * tScale;
-            char.style.left = bx + 'px'; char.style.bottom = by + 'px';
-            char.style.transform = `rotate(${rot}deg)`;
+        // Fysiikka
+        jormaPos.vy += gravity;
+        jormaPos.y += jormaPos.vy;
+        jormaPos.x += jormaPos.vx;
 
-            if (by < -100) { beep(50, 'square', 0.5, 0.2); document.getElementById('death').style.display='flex'; flipping=false; }
+        // Lattiatörmäys
+        if (jormaPos.y > 300) {
+            jormaPos.y = 300;
+            jormaPos.vy = 0;
+        }
+        // Seinätörmäys
+        if (jormaPos.x < 0) jormaPos.x = 0;
+        if (jormaPos.x > 760) jormaPos.x = 760;
 
-            if (vy < 0) {
-                let fy = stage.offsetHeight - by;
-                let cx = bx + 30;
-                [currentObj, nextObj].forEach(o => {
-                    if (fy >= o.y && fy <= o.y + 30 && cx > o.x && cx < o.x + o.w) {
-                        let nr = Math.abs(rot % 360);
-                        if (nr < 45 || nr > 315) {
-                            if (o === nextObj) { score++; scoreText.innerText = score; beep(800, 'sine', 0.2, 0.1); advance(o); }
-                            else { flipping = false; rot = 0; vy = 0; vx = 0; }
-                        } else { beep(50, 'square', 0.5, 0.2); document.getElementById('death').style.display='flex'; flipping=false; }
-                    }
-                });
+        jorma.style.left = jormaPos.x + 'px';
+        jorma.style.top = jormaPos.y + 'px';
+
+        // Opettajien päivitys
+        teachers.forEach((t, i) => {
+            t.x -= t.speed;
+            t.el.style.left = t.x + 'px';
+
+            // Törmäys Jormaan
+            let jr = jorma.getBoundingClientRect();
+            let tr = t.el.getBoundingClientRect();
+
+            if (jr.right > tr.left && jr.left < tr.right && jr.bottom > tr.top) {
+                // Jos Jorma hyppää opettajan päälle (Mario-tyyli)
+                if (jormaPos.vy > 0 && jr.bottom < tr.top + 20) {
+                    t.el.remove();
+                    teachers.splice(i, 1);
+                    jormaPos.vy = -10; // Kimpoaa ylös
+                    score += 50;
+                    scoreEl.innerText = score;
+                } else {
+                    gameActive = false;
+                    msg.style.display = 'block';
+                }
             }
-        }
-        requestAnimationFrame(loop);
+
+            if (t.x < -50) {
+                t.el.remove();
+                teachers.splice(i, 1);
+            }
+        });
+
+        // Papereiden päivitys
+        papers.forEach((p, i) => {
+            p.x -= 4;
+            p.el.style.left = p.x + 'px';
+
+            let jr = jorma.getBoundingClientRect();
+            let pr = p.el.getBoundingClientRect();
+
+            if (jr.right > pr.left && jr.left < pr.right && jr.bottom > pr.top && jr.top < pr.bottom) {
+                p.el.remove();
+                papers.splice(i, 1);
+                score += 10;
+                scoreEl.innerText = score;
+            }
+
+            if (p.x < -50) {
+                p.el.remove();
+                papers.splice(i, 1);
+            }
+        });
+
+        requestAnimationFrame(update);
     }
 
-    function advance(hit) {
-        document.querySelectorAll('.obj').forEach(el => { if(parseInt(el.style.left) < hit.x) el.remove(); });
-        currentObj = hit;
-        let nx = hit.x + 150 + Math.random()*150;
-        let ny = 300 + Math.random()*300;
-        if(nx > 400) nx = 350;
-        nextObj = createObj(nx, ny, Math.floor(Math.random()*50));
-        flipping = false; power = 0; pBar.style.width = '0%'; tScale = 1.0;
-        bx = currentObj.x + (currentObj.w/2) - 30;
-        by = stage.offsetHeight - currentObj.y;
-        rot = 0;
-    }
-
-    bx = currentObj.x + (currentObj.w/2) - 30;
-    by = stage.offsetHeight - currentObj.y;
-    loop();
+    spawnTeacher();
+    spawnPaper();
+    update();
 </script>
 </body>
 </html>
