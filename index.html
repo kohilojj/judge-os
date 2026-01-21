@@ -3,253 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BOTTLE_FLIP_v44_PRO</title>
+    <title>BOTTLE_FLIP_MEGA_v46</title>
     <style>
-        :root {
-            --neon: #00f0ff;
-            --ai: #bc13fe;
-            --bg: #0a0a0f;
-        }
-
+        :root { --neon: #00f0ff; --ai: #bc13fe; --gold: #ffcc00; --bg: #050508; }
         * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            background: var(--bg); 
-            font-family: 'Segoe UI', sans-serif;
-            display: flex; align-items: center; justify-content: center;
-            height: 100vh; color: white;
-        }
+        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; color: white; }
 
-        #game-stage {
-            position: relative;
-            width: 100vw; height: 100vh;
-            max-width: 600px; max-height: 800px;
-            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #050505 100%);
-            border: 2px solid var(--ai);
-            box-shadow: 0 0 50px rgba(188, 19, 254, 0.2);
+        #stage {
+            position: relative; width: 100vw; height: 100vh; max-width: 500px; max-height: 850px;
+            background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            border: 2px solid #111; box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
         /* PULLO */
-        #bottle {
-            position: absolute;
-            width: 30px; height: 70px;
-            background: rgba(0, 240, 255, 0.3);
-            border: 2px solid var(--neon);
-            border-radius: 5px 5px 2px 2px;
-            z-index: 10;
-            transform-origin: center bottom;
-        }
-        #bottle::before { /* Korkki */
-            content: ""; position: absolute; top: -10px; left: 50%;
-            transform: translateX(-50%); width: 12px; height: 10px;
-            background: #fff; border-radius: 2px;
+        #bottle-wrapper { position: absolute; width: 34px; height: 80px; z-index: 100; transform-origin: bottom center; }
+        .b-body { position: absolute; bottom: 0; width: 34px; height: 50px; background: rgba(0, 240, 255, 0.4); border: 2px solid var(--neon); border-radius: 6px; }
+        .b-neck { position: absolute; bottom: 50px; left: 10px; width: 14px; height: 20px; background: rgba(0, 240, 255, 0.4); border: 2px solid var(--neon); }
+        .b-cap { position: absolute; bottom: 70px; left: 8px; width: 18px; height: 10px; background: #ff003c; border-radius: 2px; }
+
+        /* OBJEKTIT / TASOT */
+        .obj {
+            position: absolute; border-top: 4px solid var(--ai);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.3); padding-top: 5px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* TASOT (PÖYDÄT) */
-        .platform {
-            position: absolute;
-            background: linear-gradient(180deg, #333 0%, #111 100%);
-            border-top: 4px solid var(--ai);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        /* KERÄTTÄVÄT TIMANTIT */
+        .diamond {
+            position: absolute; width: 15px; height: 15px; background: var(--gold);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            animation: bounce 1s infinite alternate; box-shadow: 0 0 10px var(--gold);
         }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
 
         /* HUD */
-        #hud {
-            position: absolute; top: 30px; left: 0; width: 100%;
-            text-align: center; z-index: 100;
-        }
-        .score { font-size: 40px; font-weight: 900; color: var(--neon); text-shadow: 0 0 15px var(--neon); }
-        .power-bar-bg {
-            width: 200px; height: 10px; background: #222; margin: 10px auto;
-            border-radius: 5px; overflow: hidden;
-        }
-        #power-fill { width: 0%; height: 100%; background: var(--ai); transition: 0.1s; }
+        #hud { position: absolute; top: 40px; width: 100%; text-align: center; z-index: 200; }
+        #score { font-size: 50px; font-weight: 900; color: var(--neon); }
+        #power-meter { width: 120px; height: 6px; background: #111; margin: 10px auto; border-radius: 3px; }
+        #power-bar { width: 0%; height: 100%; background: var(--ai); transition: 0.1s; }
 
-        #msg {
-            position: absolute; top: 40%; width: 100%; text-align: center;
-            display: none; z-index: 200;
-        }
-        button {
-            background: var(--neon); color: #000; border: none; padding: 15px 40px;
-            font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 50px;
+        #death {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; flex-direction: column; 
+            align-items: center; justify-content: center; z-index: 1000;
         }
     </style>
 </head>
-<body>
+<body onmousedown="charge()" onmouseup="release()" ontouchstart="charge()" ontouchend="release()">
 
-    <div id="game-stage">
+    <div id="stage">
         <div id="hud">
-            <div class="score" id="score-val">0</div>
-            <div class="power-bar-bg"><div id="power-fill"></div></div>
-            <div style="font-size: 10px; letter-spacing: 2px; color: #444;">PAINA PITKÄÄN LADATAKSESI</div>
+            <div id="score">0</div>
+            <div id="power-meter"><div id="power-bar"></div></div>
         </div>
-
-        <div id="bottle"></div>
-
-        <div id="msg">
-            <h1 style="font-size: 50px; color: var(--ai); margin-bottom: 20px;">FLIP FAILED</h1>
-            <button onclick="location.reload()">TRY AGAIN</button>
+        <div id="bottle-wrapper">
+            <div class="b-cap"></div><div class="b-neck"></div><div class="b-body"></div>
+        </div>
+        <div id="death">
+            <h1 style="color: var(--danger); margin-bottom: 20px;">SYSTEM CRASHED</h1>
+            <button onclick="location.reload()" style="padding: 15px 30px; background: var(--neon); border: none; font-weight: bold;">RESTART</button>
         </div>
     </div>
 
 <script>
-    const bottle = document.getElementById('bottle');
-    const powerFill = document.getElementById('power-fill');
-    const scoreVal = document.getElementById('score-val');
-    const msg = document.getElementById('msg');
-    const stage = document.getElementById('game-stage');
+    const bottle = document.getElementById('bottle-wrapper');
+    const scoreEl = document.getElementById('score');
+    const pBar = document.getElementById('power-bar');
+    const stage = document.getElementById('stage');
 
-    let score = 0;
-    let power = 0;
-    let isCharging = false;
-    let isFlipping = false;
-    
-    // Fysiikka-arvot
-    let bx = 50; let by = 0; // Pullon sijainti suhteessa tasoon
-    let rotation = 0;
-    let vx = 0; let vy = 0;
-    let vr = 0; // Pyörimisnopeus
+    let score = 0, power = 0, charging = false, flipping = false;
+    let bx = 50, by = 0, vx = 0, vy = 0, vr = 0, rotation = 0;
     const gravity = 0.25;
 
-    // Tasojen hallinta
-    let currentPlatform = { x: 30, y: 500, w: 100 };
-    let nextPlatform = { x: 250, y: 450, w: 80 };
+    // OBJEKTI-GENERAATTORI (50+ variaatiota)
+    const objThemes = [
+        { name: "SOHVA", w: 140, h: 50, color: "#4a2c2a" },
+        { name: "TV", w: 100, h: 80, color: "#111" },
+        { name: "KIRJA", w: 40, h: 15, color: "#800" },
+        { name: "PYLVÄS", w: 50, h: 180, color: "#004" },
+        { name: "LAATIKKO", w: 80, h: 80, color: "#543" },
+        { name: "HÄKKI", w: 70, h: 90, color: "#333" },
+        { name: "PÖYTÄ", w: 120, h: 20, color: "#642" },
+        { name: "HULLU_TASO", w: 30, h: 250, color: var(--ai) }
+    ];
 
-    function createPlatform(p, isCurrent) {
+    let currentObj = spawnObj(50, 600, 0);
+    let nextObj = spawnObj(240, 500, 1);
+    let diamond = null;
+
+    function spawnObj(x, y, themeIdx) {
+        const t = objThemes[themeIdx % objThemes.length];
         const div = document.createElement('div');
-        div.className = 'platform';
-        div.style.left = p.x + 'px';
-        div.style.top = p.y + 'px';
-        div.style.width = p.w + 'px';
-        div.style.height = '300px';
-        if(!isCurrent) div.id = 'next-p';
+        div.className = 'obj';
+        div.style.width = t.w + 'px';
+        div.style.height = t.h + 'px';
+        div.style.left = x + 'px';
+        div.style.top = y + 'px';
+        div.style.background = t.color;
+        div.innerHTML = t.name;
         stage.appendChild(div);
+        return { x, y, w: t.w, h: t.h };
     }
 
-    function init() {
-        createPlatform(currentPlatform, true);
-        createPlatform(nextPlatform, false);
-        resetBottle();
+    function spawnDiamond() {
+        if(diamond) diamond.el.remove();
+        let dx = nextObj.x + (nextObj.w / 2) - 7;
+        let dy = nextObj.y - 100;
+        const dEl = document.createElement('div');
+        dEl.className = 'diamond';
+        dEl.style.left = dx + 'px';
+        dEl.style.top = dy + 'px';
+        stage.appendChild(dEl);
+        diamond = { x: dx, y: dy, el: dEl };
     }
 
-    function resetBottle() {
-        isFlipping = false;
-        power = 0;
-        powerFill.style.width = '0%';
-        bx = currentPlatform.x + (currentPlatform.w / 2) - 15;
-        by = stage.offsetHeight - currentPlatform.y;
-        rotation = 0;
-        bottle.style.left = bx + 'px';
-        bottle.style.bottom = by + 'px';
-        bottle.style.transform = `rotate(0deg)`;
+    function charge() { if(!flipping) charging = true; }
+    function release() { if(charging) { charging = false; launch(); } }
+
+    function launch() {
+        flipping = true;
+        vx = (power / 10) * 1.8;
+        vy = (power / 10) * 4.5;
+        vr = 10 + (power / 4);
     }
 
-    // LATAUS JA HYPPY
-    window.onmousedown = window.ontouchstart = () => {
-        if (!isFlipping) isCharging = true;
-    };
-
-    window.onmouseup = window.ontouchend = () => {
-        if (isCharging) {
-            isCharging = false;
-            flip();
-        }
-    };
-
-    function flip() {
-        isFlipping = true;
-        vx = power * 0.15;
-        vy = power * 0.45;
-        vr = power * 0.8; // Pyöriminen voiman mukaan
-    }
-
-    function update() {
-        if (isCharging) {
+    function gameLoop() {
+        if (charging) {
             power = Math.min(power + 2, 100);
-            powerFill.style.width = power + '%';
-            bottle.style.transform = `scaleY(${1 - (power/400)})`; // Puristus-efekti
+            pBar.style.width = power + '%';
+            bottle.style.transform = `scaleY(${1 - power/500})`;
         }
-
-        if (isFlipping) {
-            vy -= gravity;
-            bx += vx;
-            by += vy;
-            rotation += vr;
-
+        if (flipping) {
+            vy -= gravity; bx += vx; by += vy; rotation += vr;
             bottle.style.left = bx + 'px';
             bottle.style.bottom = by + 'px';
             bottle.style.transform = `rotate(${rotation}deg)`;
 
-            // TÖRMÄYS TARKISTUS
-            if (vy < 0) { // Vain kun pullo putoaa
-                let bottleBottom = stage.offsetHeight - by;
-                let landingX = bx + 15;
-
-                // Tarkistetaan osuuko tasoon
-                let p = (landingX > nextPlatform.x && landingX < nextPlatform.x + nextPlatform.w) ? nextPlatform : 
-                        (landingX > currentPlatform.x && landingX < currentPlatform.x + currentPlatform.w) ? currentPlatform : null;
-
-                if (p && bottleBottom >= p.y && bottleBottom <= p.y + 20) {
-                    checkLanding(p);
+            // Timantin keräys
+            if (diamond) {
+                let dRect = diamond.el.getBoundingClientRect();
+                let bRect = bottle.getBoundingClientRect();
+                if(!(bRect.right < dRect.left || bRect.left > dRect.right || bRect.bottom < dRect.top || bRect.top > dRect.bottom)) {
+                    score += 5; scoreEl.innerText = score;
+                    diamond.el.remove(); diamond = null;
                 }
             }
 
-            // Pelialueelta putoaminen
-            if (by < -100 || bx > stage.offsetWidth) {
-                gameOver();
+            if (by < -100) { document.getElementById('death').style.display = 'flex'; flipping = false; }
+
+            if (vy < 0) {
+                let footY = stage.offsetHeight - by;
+                let cx = bx + 17;
+                [currentObj, nextObj].forEach(o => {
+                    if (footY >= o.y && footY <= o.y + 30 && cx > o.x && cx < o.x + o.w) {
+                        let normR = Math.abs(rotation % 360);
+                        if (normR < 35 || normR > 325) {
+                            if (o === nextObj) { score++; scoreEl.innerText = score; advance(o); }
+                            else { flipping = false; rotation = 0; vy = 0; vx = 0; }
+                        } else { document.getElementById('death').style.display = 'flex'; flipping = false; }
+                    }
+                });
             }
         }
-        requestAnimationFrame(update);
+        requestAnimationFrame(gameLoop);
     }
 
-    function checkLanding(p) {
-        // Tarkistetaan onko pullo suorassa (n. 360 asteen monikerrat)
-        let normalizedRotation = Math.abs(rotation % 360);
-        if (normalizedRotation < 15 || normalizedRotation > 345) {
-            if (p === nextPlatform) {
-                success();
-            } else {
-                // Laskeuduttiin takaisin samalle pöydälle
-                isFlipping = false;
-                rotation = 0;
-                by = stage.offsetHeight - p.y;
-                bottle.style.bottom = by + 'px';
-                bottle.style.transform = `rotate(0deg)`;
-            }
-        } else {
-            gameOver();
-        }
+    function advance(hitObj) {
+        document.querySelectorAll('.obj').forEach(el => { if(parseInt(el.style.left) < hitObj.x) el.remove(); });
+        currentObj = hitObj;
+        let nx = 150 + Math.random() * 100;
+        let ny = 300 + Math.random() * 300;
+        let nt = Math.floor(Math.random() * 50); // Arpoo teeman 50 vaihtoehdosta (modulolla)
+        nextObj = spawnObj(nx, ny, nt);
+        if(Math.random() > 0.5) spawnDiamond();
+        
+        // Reset bottle position to new platform
+        flipping = false; power = 0; pBar.style.width = '0%';
+        bx = currentObj.x + (currentObj.w/2) - 17;
+        by = stage.offsetHeight - currentObj.y;
+        rotation = 0;
     }
 
-    function success() {
-        score++;
-        scoreVal.innerText = score;
-        
-        // Siirretään tasot
-        const oldP = document.getElementById('next-p');
-        if(oldP) oldP.remove();
-        
-        currentPlatform = nextPlatform;
-        nextPlatform = {
-            x: Math.random() * (stage.offsetWidth - 100) + 50,
-            y: 400 + (Math.random() * 100),
-            w: Math.max(60, 100 - (score * 2)) // Tasot pienenevät
-        };
-        
-        document.querySelectorAll('.platform')[0].remove();
-        createPlatform(currentPlatform, true);
-        createPlatform(nextPlatform, false);
-        
-        resetBottle();
-    }
-
-    function gameOver() {
-        gameActive = false;
-        msg.style.display = 'block';
-    }
-
-    init();
-    update();
+    advance(currentObj);
+    gameLoop();
 </script>
 </body>
 </html>
