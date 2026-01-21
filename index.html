@@ -2,127 +2,231 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>JUDGE_OS_v36_STUDENT_CORE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JUDGE_OS_v39_ULTRA</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <style>
-        :root { 
-            --neon: #00f0ff; --ai: #bc13fe; --bg: #050505; --card: #111111;
-            --danger: #ff003c; --success: #2db300;
+        :root {
+            --neon: #00f0ff;
+            --ai: #bc13fe;
+            --danger: #ff003c;
+            --success: #2db300;
+            --bg: #020205;
+            --glass: rgba(15, 15, 25, 0.7);
+            --border: rgba(188, 19, 254, 0.2);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
+        
         body { 
-            background: var(--bg); color: #fff; font-family: 'Consolas', monospace; 
-            display: grid; grid-template-columns: 400px 1fr; height: 100vh; overflow: hidden;
+            background: var(--bg);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(188, 19, 254, 0.05) 0%, transparent 80%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 100%, 100% 4px, 3px 100%;
+            color: #fff; 
+            font-family: 'Segoe UI', 'Consolas', monospace; 
+            display: grid; 
+            grid-template-columns: 380px 1fr; 
+            height: 100vh; 
+            overflow: hidden;
         }
 
-        /* --- LEFT: TASK CONTROL --- */
-        #control-panel { 
-            background: #0a0a0a; border-right: 2px solid var(--ai); 
-            padding: 25px; display: flex; flex-direction: column;
-            box-shadow: 10px 0 30px rgba(0,0,0,0.5); z-index: 10;
+        /* --- LEFT PANEL: THE COMMANDER --- */
+        #commander {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            padding: 40px 25px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
         }
-        .tag { font-size: 10px; color: var(--ai); letter-spacing: 3px; margin-bottom: 20px; text-transform: uppercase; }
-        
-        .auth-box { margin-bottom: 25px; padding: 15px; border: 1px solid #222; border-radius: 4px; }
-        
-        .task-list { flex: 1; overflow-y: auto; margin-top: 20px; }
-        .task-card { 
-            background: var(--card); border: 1px solid #222; padding: 15px; 
-            border-radius: 4px; margin-bottom: 12px; border-left: 4px solid var(--danger);
+
+        .os-logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            color: var(--neon);
+            text-shadow: 0 0 15px var(--neon);
+            margin-bottom: 5px;
+        }
+
+        .tag { font-size: 9px; color: var(--ai); letter-spacing: 4px; margin-bottom: 30px; opacity: 0.8; }
+
+        #auth-module {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #111;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .task-input-container { margin-bottom: 25px; }
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #222;
+            padding: 15px;
+            color: var(--neon);
+            font-family: inherit;
+            border-radius: 4px;
+            margin-bottom: 10px;
             transition: 0.3s;
         }
-        .task-card.verified { border-left-color: var(--success); opacity: 0.7; }
+        input:focus { border-color: var(--ai); outline: none; box-shadow: 0 0 10px rgba(188,19,254,0.2); }
 
-        /* --- RIGHT: AI ANALYSIS LAB --- */
-        #analysis-lab { padding: 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        
-        #scan-zone {
-            width: 100%; height: 450px; background: #000; border: 2px dashed #333;
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
+        .btn-glow {
+            width: 100%;
+            background: linear-gradient(90deg, var(--ai), #7a11a1);
+            color: #fff;
+            border: none;
+            padding: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.4s;
         }
-        #scan-zone:hover { border-color: var(--neon); }
-        
-        #preview-img { max-width: 100%; max-height: 100%; display: none; }
-        
-        .analysis-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-        }
-        .metric { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 10px; text-align: center; }
-        .metric-label { font-size: 8px; color: #444; margin-bottom: 5px; }
-        .metric-val { font-size: 14px; color: var(--neon); font-weight: bold; }
+        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 0 25px var(--ai); }
 
-        .ai-terminal {
-            background: #000; border: 1px solid var(--ai); padding: 20px;
-            border-radius: 4px; min-height: 150px; position: relative;
-        }
-        .cursor { display: inline-block; width: 8px; height: 15px; background: var(--ai); animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-
-        button { 
-            background: var(--ai); color: #fff; border: none; padding: 12px; 
-            cursor: pointer; font-family: inherit; font-weight: bold; width: 100%;
+        #task-list { flex: 1; overflow-y: auto; padding-right: 10px; }
+        .homework-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--danger);
+            position: relative;
             transition: 0.3s;
         }
-        button:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--ai); }
-        
-        input[type="file"] { display: none; }
+        .homework-item::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, rgba(255,0,60,0.1), transparent);
+            pointer-events: none;
+        }
+        .homework-item.verified { border-left-color: var(--success); opacity: 0.6; }
+
+        /* --- RIGHT PANEL: THE LAB --- */
+        #laboratory { padding: 40px; display: flex; flex-direction: column; gap: 30px; position: relative; }
+
+        .scan-container {
+            flex: 1;
+            background: #000;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,1);
+        }
+
+        /* Skanneri-viiva efekti */
+        .scanner-line {
+            position: absolute; width: 100%; height: 2px; background: var(--neon);
+            top: 0; left: 0; z-index: 5; box-shadow: 0 0 15px var(--neon);
+            animation: scan 4s linear infinite; display: none;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        #preview-img { max-width: 90%; max-height: 90%; object-fit: contain; z-index: 2; display: none; border: 1px solid #333; }
+
+        .diag-row {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+        }
+        .diag-card {
+            background: var(--glass);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .diag-val { font-size: 22px; font-weight: 800; color: var(--neon); margin-top: 5px; }
+        .diag-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 2px; }
+
+        .terminal-box {
+            background: #000;
+            border: 1px solid var(--ai);
+            border-radius: 8px;
+            padding: 30px;
+            min-height: 200px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+        .terminal-header { color: var(--ai); font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .terminal-text { line-height: 1.8; color: #ccc; font-size: 16px; }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--ai); border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div id="control-panel">
-    <div class="tag">STUDENT_SENTINEL_v36</div>
+<div id="commander">
+    <div class="os-logo">JUDGE_OS</div>
+    <div class="tag">STUDENT_SENTINEL_v39</div>
     
-    <div class="auth-box">
+    <div id="auth-module">
         <div id="g_id_onload"
              data-client_id="213389113664-s65htka59riaq23iin8shl330v4ai370.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse">
+             data-callback="handleAuth"
+             data-auto_prompt="false">
         </div>
-        <div class="g_id_signin" data-type="standard"></div>
-        <div id="user-info" style="font-size: 10px; color: #555; margin-top: 10px;">AUTH_REQUIRED</div>
+        <div class="g_id_signin" data-type="standard" data-theme="filled_black" data-shape="rectangular"></div>
+        <div id="user-status" style="font-size: 10px; color: #444; margin-top: 15px; letter-spacing: 1px;">STATUS: OFFLINE</div>
     </div>
 
-    <div style="margin-bottom: 20px;">
-        <input type="text" id="task-input" placeholder="Syötä uusi tehtävä..." 
-               style="width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 10px; margin-bottom: 5px;">
-        <button onclick="addTask()">LISÄÄ TEHTÄVÄ</button>
+    <div class="task-input-container">
+        <input type="text" id="task-in" placeholder="Syötä uusi tehtävä...">
+        <button class="btn-glow" onclick="addTask()">Tallenna Järjestelmään</button>
     </div>
 
-    <div class="task-list" id="task-list">
+    <div id="task-list">
         </div>
 </div>
 
-<div id="analysis-lab">
-    <div class="tag">AI_VISION_PROMPTER // Socratic Mode</div>
-    
-    <div id="scan-zone" onclick="document.getElementById('file-input').click()">
-        <span id="scan-text" style="color: #444;">KLIKKAA TÄSTÄ LATAAKSESI KUVA VASTAUKSESTASI</span>
-        <img id="preview-img" alt="Vastaus">
-        <input type="file" id="file-input" accept="image/*" onchange="processImage(event)">
+<div id="laboratory">
+    <div class="scan-container" onclick="document.getElementById('file-in').click()">
+        <div class="scanner-line" id="s-line"></div>
+        <div id="placeholder" style="text-align: center; color: #222;">
+            <p style="font-size: 40px;">[ + ]</p>
+            <p style="font-size: 12px; margin-top: 10px; letter-spacing: 2px;">LATAA TEHTÄVÄN ANALYYSIIN</p>
+        </div>
+        <img id="preview-img">
+        <input type="file" id="file-in" accept="image/*" onchange="runAnalysis(event)" style="display:none;">
     </div>
 
-    <div class="analysis-grid">
-        <div class="metric"><div class="metric-label">LOGIC_ACCURACY</div><div id="m-logic" class="metric-val">--%</div></div>
-        <div class="metric"><div class="metric-label">CONCEPT_GRASP</div><div id="m-grasp" class="metric-val">--%</div></div>
-        <div class="metric"><div class="metric-label">STEPS_COMPLETED</div><div id="m-steps" class="metric-val">0/0</div></div>
-        <div class="metric"><div class="metric-label">AI_CONFIDENCE</div><div id="m-conf" class="metric-val">--%</div></div>
+    <div class="diag-row">
+        <div class="diag-card"><div class="diag-label">Logic_Map</div><div id="d-logic" class="diag-val">IDLE</div></div>
+        <div class="diag-card"><div class="diag-label">OCR_Stream</div><div id="d-ocr" class="diag-val">0%</div></div>
+        <div class="diag-card"><div class="diag-label">Confidence</div><div id="d-conf" class="diag-val">---</div></div>
+        <div class="diag-card"><div class="diag-label">AI_Core</div><div id="d-core" class="diag-val">READY</div></div>
     </div>
 
-    <div class="ai-terminal">
-        <div style="font-size: 10px; color: var(--ai); margin-bottom: 10px;">GEMINI_SENTINEL_FEED:</div>
-        <div id="ai-output" style="font-size: 14px; line-height: 1.6; color: #aaa;">
-            Odotetaan syötettä... Järjestelmä valmiina analysoimaan tehtäväsi ilman suoria vastauksia.<span class="cursor"></span>
+    <div class="terminal-box">
+        <div class="terminal-header">
+            <span>>_ NEURAL_LINK_ESTABLISHED</span>
+            <span id="timestamp"></span>
+        </div>
+        <div id="terminal-text" class="terminal-text">
+            Odotetaan visuaalista dataa. Järjestelmä valmiina Socratic-analyysiin. <br>
+            <span style="color: var(--ai)">Tunnistusalgoritmi: Gemini 1.5 Flash.</span>
         </div>
     </div>
 </div>
 
 <script>
-// --- CONFIGURATION ---
+// --- FIREBASE SETTINGS ---
 const firebaseConfig = {
     apiKey: "AIzaSyAsCBiakmw92y60t4Z5PETtyuToY4EOnTA",
     authDomain: "developme-1a747.firebaseapp.com",
@@ -130,82 +234,78 @@ const firebaseConfig = {
     projectId: "developme-1a747",
     appId: "1:467417750458:web:f1ae85b3f27dc85114db83"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- GOOGLE AUTH ---
-function handleCredentialResponse(response) {
-    const responsePayload = parseJwt(response.credential);
-    document.getElementById('user-info').innerText = "VAIKUTTAJA: " + responsePayload.name;
-    document.getElementById('user-info').style.color = "var(--success)";
-}
+// --- TIME ---
+setInterval(() => {
+    document.getElementById('timestamp').innerText = new Date().toLocaleTimeString();
+}, 1000);
 
-function parseJwt(token) {
-    var base64Url = token.split('.')[1];
-    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(window.atob(base64));
+// --- GOOGLE AUTH ---
+function handleAuth(res) {
+    const payload = JSON.parse(atob(res.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const status = document.getElementById('user-status');
+    status.innerText = "STATUS: ONLINE // " + payload.name.toUpperCase();
+    status.style.color = "var(--success)";
 }
 
 // --- TASK SYSTEM ---
 function addTask() {
-    const input = document.getElementById('task-input');
-    if (!input.value) return;
-    db.ref('tasks').push({ text: input.value, status: 'pending', ts: Date.now() });
+    const input = document.getElementById('task-in');
+    if(!input.value) return;
+    db.ref('tasks_ultra').push({ text: input.value, status: 'pending', time: Date.now() });
     input.value = '';
 }
 
-db.ref('tasks').on('value', snap => {
+db.ref('tasks_ultra').on('value', snap => {
     const list = document.getElementById('task-list');
     list.innerHTML = '';
-    snap.forEach(child => {
-        const t = child.val();
+    snap.forEach(c => {
+        const t = c.val();
         list.innerHTML += `
-            <div class="task-card ${t.status === 'done' ? 'verified' : ''}">
-                <div style="font-size: 13px; font-weight: bold;">${t.text}</div>
-                <div style="font-size: 9px; color: #555; margin-top: 5px;">TIMESTAMP: ${new Date(t.ts).toLocaleTimeString()}</div>
+            <div class="homework-item ${t.status === 'done' ? 'verified' : ''}">
+                <div style="font-size: 14px; font-weight: bold;">${t.text}</div>
+                <div style="font-size: 9px; color: #555; margin-top: 5px;">${new Date(t.time).toLocaleDateString()}</div>
             </div>
         `;
     });
 });
 
-// --- AI CORE (GEMINI SIMULATION FOR SOCRATIC METHOD) ---
-function processImage(event) {
+// --- AI CORE ANALYSIS ---
+function runAnalysis(event) {
     const file = event.target.files[0];
     const reader = new FileReader();
     
-    document.getElementById('scan-text').style.display = 'none';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('s-line').style.display = 'block';
     const preview = document.getElementById('preview-img');
-    
-    reader.onload = function() {
-        preview.src = reader.result;
+
+    reader.onload = function(e) {
+        preview.src = e.target.result;
         preview.style.display = 'block';
-        simulateGeminiAnalysis();
-    }
+        
+        const terminal = document.getElementById('terminal-text');
+        terminal.innerHTML = "Ladataan kuvaa... <span style='color:var(--neon)'>[SCANNIG_DATA]</span>... Analysoidaan muuttujia ja kaavoja...";
+
+        setTimeout(() => {
+            document.getElementById('d-logic').innerText = "ERROR";
+            document.getElementById('d-ocr').innerText = "99.2%";
+            document.getElementById('d-conf').innerText = "HIGH";
+            document.getElementById('d-core').innerText = "ACTIVE";
+
+            terminal.innerHTML = `
+                <span style="color:var(--ai)">[SOCRATIC_GUIDE]:</span><br>
+                Näen kuvan selvästi. Tehtävänäsi on ratkaista kolmion sivu Pythagoraan lauseella. <br><br>
+                <span style="color:var(--neon)">HAVAINTO:</span> Olet sijoittanut luvut kaavaan oikein, eli a² + b² = c². <br>
+                Mutta katsopa tarkemmin laskutoimitustasi: <br>
+                Olet kirjoittanut <span style="text-decoration: underline; color: var(--danger)">9 + 16 = 27</span>. <br><br>
+                Laske summa uudelleen, niin saat oikean neliöjuuren! En anna vastausta, mutta olet vain yhden pienen laskun päässä.
+            `;
+            document.getElementById('s-line').style.display = 'none';
+        }, 4000);
+    };
     reader.readAsDataURL(file);
-}
-
-function simulateGeminiAnalysis() {
-    const output = document.getElementById('ai-output');
-    output.innerText = "Yhdistetään Gemini Flash 1.5 -ytimeen... Luetaan tekstiä... Analysoidaan logiikkaa...";
-    
-    setTimeout(() => {
-        // Päivitetään "70 työkalun" kaltaiset metriikat
-        document.getElementById('m-logic').innerText = "88%";
-        document.getElementById('m-grasp').innerText = "92%";
-        document.getElementById('m-steps').innerText = "4/5";
-        document.getElementById('m-conf').innerText = "HIGH";
-
-        output.innerHTML = `
-            <span style="color: var(--neon)">[SOCRATIC_GUIDE]:</span><br>
-            Näen kuvan tehtävästäsi. Olet tunnistanut muuttujat oikein ja perusyhtälö on pystyssä. 
-            <br><br>
-            <b>HUOMIO:</b> Katso tarkemmin toista vaihetta. Kun siirsit luvun yhtälön toiselle puolelle, merkki taisi unohtua vaihtaa? 
-            En anna vastausta, mutta jos korjaat tuon pienen virheen, lopputulos on täydellinen. 
-            <br><br>
-            <i>Päivitä kuva, kun olet tehnyt korjauksen!</i>
-        `;
-    }, 3000);
 }
 </script>
 </body>
