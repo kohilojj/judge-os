@@ -3,34 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JORMA: THE GREAT ESCAPE</title>
+    <title>JORMA: THE GREAT ESCAPE - v58 PRO</title>
     <style>
         :root { --neon: #00f0ff; --alert: #ffaa00; --danger: #ff003c; --bg: #020205; }
-        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
-        body { background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
         
-        /* Steam-tyylinen resoluution lukitus (Pixel Art feel) */
         #game-container {
             width: 100vw; height: 100vh;
             display: flex; align-items: center; justify-content: center;
-            background: #000;
         }
+
         canvas { 
             background: var(--bg); 
             image-rendering: pixelated; 
-            box-shadow: 0 0 100px rgba(0,0,0,1);
-            border: 1px solid #111;
+            border: 2px solid #111;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
         }
 
-        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; color: white; }
+        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: all; }
         
-        #hud { position: absolute; top: 20px; left: 20px; border-left: 2px solid var(--neon); padding-left: 15px; }
-        #noise-meter { width: 100px; height: 4px; background: #222; margin-top: 5px; position: relative; }
-        #noise-fill { width: 0%; height: 100%; background: var(--neon); transition: width 0.1s; }
+        #hud { position: absolute; top: 20px; left: 20px; border-left: 3px solid var(--neon); padding-left: 15px; }
+        #noise-meter { width: 120px; height: 6px; background: #111; margin-top: 8px; border: 1px solid #333; }
+        #noise-fill { width: 0%; height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: width 0.1s; }
         
-        .btn { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 12px 30px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; transition: 0.2s; }
-        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
+        .btn { background: none; border: 2px solid var(--neon); color: var(--neon); padding: 15px 40px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
     </style>
 </head>
 <body>
@@ -38,21 +37,23 @@
 <div id="game-container">
     <div id="ui-layer">
         <div id="hud">
-            <div id="act-name" style="font-size: 10px; opacity: 0.5;">ACT I: ERISTYS</div>
-            <div id="level-title" style="font-size: 18px; color: var(--neon); letter-spacing: 2px;">SELLERI 01</div>
+            <div id="act-name" style="font-size: 10px; opacity: 0.5; letter-spacing: 2px;">ACT I: ERISTYS</div>
+            <div id="level-title" style="font-size: 20px; color: var(--neon); font-weight: bold;">SELLERI 01</div>
             <div id="noise-meter"><div id="noise-fill"></div></div>
+            <div style="font-size: 9px; margin-top: 4px; opacity: 0.6;">MELUTASO</div>
         </div>
 
         <div id="screen-start" class="overlay">
-            <h1 style="font-size: 40px; color: var(--neon); margin-bottom: 5px;">JORMA</h1>
-            <p style="font-size: 10px; letter-spacing: 5px; margin-bottom: 30px; opacity: 0.7;">THE GREAT ESCAPE</p>
+            <h1 style="font-size: 60px; color: var(--neon); text-shadow: 0 0 15px var(--neon);">JORMA</h1>
+            <p style="letter-spacing: 10px; margin-bottom: 40px; opacity: 0.8;">THE GREAT ESCAPE</p>
             <button class="btn" onclick="startGame()">ALOITA OPERAATIO</button>
+            <p style="margin-top: 20px; font-size: 11px; opacity: 0.5;">SHIFT: JUOKSE | CTRL: HIIVI | WASD: LIIKU</p>
         </div>
 
         <div id="screen-death" class="overlay" style="display:none;">
-            <h2 style="color: var(--danger); letter-spacing: 5px;">HÄLYTYS LAUKESI</h2>
-            <p id="death-note" style="font-size: 12px; margin: 15px 0; opacity: 0.7;">Vartija kuuli askeleesi.</p>
-            <button class="btn" onclick="retry()">Lataa viimeisin tallennus</button>
+            <h2 style="color: var(--danger); letter-spacing: 5px; font-size: 30px;">HÄLYTYS!</h2>
+            <p id="death-note" style="margin: 20px 0; opacity: 0.8;">Vartija havaitsi liikettä.</p>
+            <button class="btn" onclick="retry()">Yritä uudelleen</button>
         </div>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -62,18 +63,18 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // --- STEAM RESOLUUTIO (480p style) ---
+    // Pelin sisäinen resoluutio (640x360 on hyvä retro-laajakuva)
     const WIDTH = 640;
     const HEIGHT = 360;
+    const TILE = 40;
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 
     let state = "menu";
     let currentLvl = 0;
-    let player = { x: 0, y: 0, rot: 0, noise: 0, isSneaking: false, isRunning: false };
+    let player = { x: 0, y: 0, rot: 0, noise: 0, inv: null };
     const keys = {};
 
-    // --- LEVEL ARCHITECTURE (ACTS) ---
     const levels = [
         {
             act: "ACT I: ERISTYS", title: "VARJOJEN ALKU",
@@ -81,44 +82,32 @@
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
                 [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,1,0,0,0,1,1,1,1,0,1,1,1,0,1],
-                [1,0,1,1,1,0,1,4,0,0,0,1,5,0,0,1],
-                [1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1]
-            ],
-            guards: [{ x: 5, y: 1, startX: 5, startY: 1, tx: 14, ty: 1, mode: "patrol", speed: 1.2 }],
-            spawn: {x: 1.5, y: 1.5}
-        },
-        {
-            act: "ACT I: ERISTYS", title: "VALVONTASALORAKENNE",
-            map: [
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
-                [1,0,0,6,1,0,0,0,0,0,0,0,0,1,0,1],
-                [1,1,1,0,1,1,1,1,1,1,1,1,0,1,5,1],
+                [1,0,1,1,1,0,1,4,0,0,0,1,0,0,0,1],
+                [1,0,0,0,0,0,1,1,0,1,1,1,1,5,1,1],
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ],
-            guards: [
-                { x: 1, y: 1, startX: 1, startY: 1, tx: 14, ty: 1, mode: "patrol", speed: 1.5 },
-                { x: 14, y: 3, startX: 14, startY: 3, tx: 7, ty: 3, mode: "patrol", speed: 2.0 }
-            ],
+            guards: [{ x: 5, y: 1, startX: 5, startY: 1, tx: 14, ty: 1, mode: "patrol", speed: 1.5 }],
             spawn: {x: 1.5, y: 1.5}
         }
     ];
 
     function startGame() {
         document.getElementById('screen-start').style.display = 'none';
-        currentLvl = parseInt(localStorage.getItem('jor_save') || 0);
-        loadLevel(currentLvl);
+        loadLevel(0);
         state = "playing";
         requestAnimationFrame(loop);
     }
 
     function loadLevel(idx) {
-        if(idx >= levels.length) return win();
+        if(idx >= levels.length) {
+            alert("PAKO ONNISTUI!");
+            location.reload();
+            return;
+        }
         currentLvl = idx;
-        localStorage.setItem('jor_save', idx);
         const l = levels[idx];
-        player.x = l.spawn.x * 40; player.y = l.spawn.y * 40;
+        player.x = l.spawn.x * TILE;
+        player.y = l.spawn.y * TILE;
         player.inv = null;
         document.getElementById('act-name').innerText = l.act;
         document.getElementById('level-title').innerText = l.title;
@@ -133,66 +122,91 @@
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
 
+    // KORJATTU TÖRMÄYKSENTUNNISTUS (Ei enää undefined-virheitä)
+    function checkColl(px, py) {
+        const l = levels[currentLvl];
+        const gx = Math.floor(px / TILE);
+        const gy = Math.floor(py / TILE);
+
+        // Rajatarkistus
+        if (gy < 0 || gy >= l.map.length || gx < 0 || gx >= l.map[0].length) return true;
+        
+        return l.map[gy][gx] === 1;
+    }
+
     function update() {
         const l = levels[currentLvl];
-        let speed = 2.5;
+        let speed = 2.0;
         player.noise = 0;
-        
-        // --- MEKANIIKKA: STEALTH VS RUN ---
-        if(keys['ShiftLeft']) { speed = 4.0; player.noise = 80; } // Juoksu
-        else if(keys['ControlLeft'] || keys['KeyC']) { speed = 1.0; player.noise = 5; } // Hiipiminen
-        else { player.noise = 30; } // Kävely
+
+        // Hiiviskelymekaniikka
+        if(keys['ShiftLeft']) { speed = 3.5; player.noise = 80; }
+        else if(keys['ControlLeft']) { speed = 0.8; player.noise = 5; }
+        else { player.noise = 25; }
 
         let ox = player.x, oy = player.y;
         let mvX = 0, mvY = 0;
 
-        if(keys['ArrowUp'] || keys['KeyW']) mvY -= speed;
-        if(keys['ArrowDown'] || keys['KeyS']) mvY += speed;
-        if(keys['ArrowLeft'] || keys['KeyA']) mvX -= speed;
-        if(keys['ArrowRight'] || keys['KeyD']) mvX += speed;
+        if(keys['KeyW'] || keys['ArrowUp']) mvY -= speed;
+        if(keys['KeyS'] || keys['ArrowDown']) mvY += speed;
+        if(keys['KeyA'] || keys['ArrowLeft']) mvX -= speed;
+        if(keys['KeyD'] || keys['ArrowRight']) mvX += speed;
 
-        player.x += mvX;
-        if(checkColl(player.x, player.y)) player.x = ox;
-        player.y += mvY;
-        if(checkColl(player.x, player.y)) player.y = oy;
-
-        if(mvX !== 0 || mvY !== 0) player.rot = Math.atan2(mvY, mvX);
-        else player.noise = 0; // Paikallaan = hiljaa
+        if(mvX !== 0 || mvY !== 0) {
+            player.x += mvX;
+            if(checkColl(player.x, player.y)) player.x = ox;
+            player.y += mvY;
+            if(checkColl(player.x, player.y)) player.y = oy;
+            player.rot = Math.atan2(mvY, mvX);
+        } else {
+            player.noise = 0;
+        }
 
         document.getElementById('noise-fill').style.width = player.noise + "%";
 
-        // --- VARTIJA AI: THREE STATES ---
+        // Vartija AI & Raycasting valo
         l.guards.forEach(g => {
-            let dist = Math.hypot(g.x*40 + 20 - player.x, g.y*40 + 20 - player.y);
-            
-            // Reagointi meluun
-            if(dist < (player.noise * 1.5) && g.mode !== "chase") {
-                g.mode = "alert";
-                g.wait = 120;
-            }
-
+            // Liike
             if(g.mode === "patrol") {
-                let targetX = g.tx*40+20, targetY = g.ty*40+20;
-                let ang = Math.atan2(targetY - (g.y*40+20), targetX - (g.x*40+20));
-                g.x += Math.cos(ang) * (g.speed/40);
-                g.y += Math.sin(ang) * (g.speed/40);
-                if(Math.hypot(targetX-(g.x*40+20), targetY-(g.y*40+20)) < 5) {
+                let targetX = g.tx * TILE + 20, targetY = g.ty * TILE + 20;
+                let ang = Math.atan2(targetY - (g.y * TILE + 20), targetX - (g.x * TILE + 20));
+                g.x += Math.cos(ang) * (g.speed / TILE);
+                g.y += Math.sin(ang) * (g.speed / TILE);
+                if(Math.hypot(targetX - (g.x * TILE + 20), targetY - (g.y * TILE + 20)) < 5) {
                     let tempX = g.tx; g.tx = g.startX; g.startX = tempX;
                 }
             }
+
+            // Etäisyys pelaajaan
+            let dist = Math.hypot(g.x * TILE + 20 - player.x, g.y * TILE + 20 - player.y);
             
-            if(dist < 50) catchPlayer("Vartija huomasi sinut lähietäisyydeltä.");
+            // Kuuleminen (Melu)
+            if(dist < player.noise * 1.4) catchPlayer("Vartija kuuli askeleesi pimeässä.");
+
+            // Näkeminen (vain jos valo osuu)
+            if(dist < 90) {
+                // Yksinkertainen näköyhteys (onko seinää välissä)
+                if(!isWallBetween(g.x*TILE+20, g.y*TILE+20, player.x, player.y)) {
+                    catchPlayer("Jäit vartijan valokeilaan!");
+                }
+            }
         });
 
-        // Tavoitteet
-        let tx = Math.floor(player.x/40), ty = Math.floor(player.y/40);
+        // Esineet
+        let tx = Math.floor(player.x/TILE), ty = Math.floor(player.y/TILE);
         if(l.map[ty][tx] === 4) { player.inv = "SPOON"; l.map[ty][tx] = 0; }
         if(l.map[ty][tx] === 5 && player.inv) loadLevel(currentLvl + 1);
     }
 
-    function checkColl(x, y) {
-        let l = levels[currentLvl];
-        return l.map[Math.floor(y/40)][Math.floor(x/40)] === 1;
+    function isWallBetween(x1, y1, x2, y2) {
+        let dist = Math.hypot(x2-x1, y2-y1);
+        let step = 10;
+        for(let d=0; d<dist; d+=step) {
+            let px = x1 + (x2-x1) * (d/dist);
+            let py = y1 + (y2-y1) * (d/dist);
+            if(checkColl(px, py)) return true;
+        }
+        return false;
     }
 
     function catchPlayer(msg) {
@@ -205,31 +219,54 @@
         ctx.fillStyle = "#020205";
         ctx.fillRect(0,0,WIDTH,HEIGHT);
         const l = levels[currentLvl];
-        const T = 40;
 
         ctx.save();
         ctx.translate(WIDTH/2 - player.x, HEIGHT/2 - player.y);
 
-        // Map
+        // Kartta
         for(let y=0; y<l.map.length; y++) {
             for(let x=0; x<l.map[y].length; x++) {
                 let t = l.map[y][x];
-                if(t === 1) { ctx.fillStyle="#111118"; ctx.fillRect(x*T,y*T,T,T); }
-                if(t === 4) { ctx.fillStyle="var(--neon)"; ctx.beginPath(); ctx.arc(x*T+20,y*T+20,5,0,7); ctx.fill(); }
-                if(t === 5) { ctx.fillStyle="rgba(0,255,0,0.1)"; ctx.fillRect(x*T,y*T,T,T); }
+                if(t === 1) { 
+                    ctx.fillStyle="#111118"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE); 
+                    ctx.strokeStyle="#1a1a25"; ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
+                }
+                if(t === 4) { ctx.fillStyle="var(--neon)"; ctx.beginPath(); ctx.arc(x*TILE+20,y*TILE+20,6,0,7); ctx.fill(); }
+                if(t === 5) { ctx.fillStyle="rgba(0,255,0,0.1)"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE); }
             }
         }
 
-        // Vartijat
+        // Vartijat & Valokeilat (Raycasting)
         l.guards.forEach(g => {
-            ctx.fillStyle = g.mode === "alert" ? "var(--alert)" : "var(--danger)";
-            ctx.fillRect(g.x*40+10, g.y*40+10, 20, 20);
-            // Valokeila
-            let grad = ctx.createRadialGradient(g.x*40+20, g.y*40+20, 0, g.x*40+20, g.y*40+20, 80);
-            grad.addColorStop(0, g.mode === "alert" ? "rgba(255,150,0,0.2)" : "rgba(255,0,0,0.1)");
+            const gx = g.x * TILE + 20;
+            const gy = g.y * TILE + 20;
+            const rad = 100;
+
+            // Valokeila-efekti joka pysähtyy seiniin
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            for(let i=0; i<=40; i++) {
+                let ang = (i/40) * Math.PI * 2;
+                let rx = gx, ry = gy;
+                for(let d=0; d<rad; d+=5) {
+                    let nx = gx + Math.cos(ang)*d;
+                    let ny = gy + Math.sin(ang)*d;
+                    if(checkColl(nx, ny)) break;
+                    rx = nx; ry = ny;
+                }
+                ctx.lineTo(rx, ry);
+            }
+            ctx.closePath();
+            let grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
+            grad.addColorStop(0, "rgba(255,255,0,0.2)");
             grad.addColorStop(1, "transparent");
             ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(g.x*40+20, g.y*40+20, 80, 0, 7); ctx.fill();
+            ctx.fill();
+            ctx.restore();
+
+            ctx.fillStyle = "var(--danger)";
+            ctx.fillRect(gx-12, gy-12, 24, 24);
         });
 
         // Jorma
@@ -237,14 +274,15 @@
         ctx.translate(player.x, player.y);
         ctx.rotate(player.rot);
         ctx.fillStyle = "#e67e22";
-        ctx.fillRect(-12,-12,24,24);
+        ctx.fillRect(-15, -15, 30, 30);
+        ctx.fillStyle = "white"; ctx.fillRect(8, -8, 6, 6);
         ctx.restore();
 
         ctx.restore();
 
-        // Vinjetti
-        let v = ctx.createRadialGradient(WIDTH/2, HEIGHT/2, 50, WIDTH/2, HEIGHT/2, 250);
-        v.addColorStop(0, "transparent"); v.addColorStop(1, "rgba(0,0,0,0.9)");
+        // Pimeys/Vinjetti
+        let v = ctx.createRadialGradient(WIDTH/2, HEIGHT/2, 50, WIDTH/2, HEIGHT/2, 280);
+        v.addColorStop(0, "transparent"); v.addColorStop(1, "rgba(0,0,0,0.95)");
         ctx.fillStyle = v; ctx.fillRect(0,0,WIDTH,HEIGHT);
     }
 
