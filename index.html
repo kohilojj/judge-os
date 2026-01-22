@@ -3,214 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JORMA RUN: TEACHER ATTACK</title>
+    <title>JORMA_PRISON_SIM</title>
     <style>
-        :root { --jorma: #ff3333; --ope: #444; --bg: #222; --floor: #8d6e63; }
+        :root {
+            --wall: #2c3e50;
+            --floor: #7f8c8d;
+            --jorma: #e67e22;
+            --guard: #2980b9;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; }
+        body { background: #000; font-family: 'Consolas', monospace; color: white; overflow: hidden; }
 
-        #game-container {
-            position: relative; width: 800px; height: 400px;
-            background: linear-gradient(to bottom, #1a1a1a, #333);
-            border: 4px solid #fff; overflow: hidden;
-        }
-
-        /* JORMA */
-        #jorma {
-            position: absolute; width: 40px; height: 60px;
-            background: var(--jorma); border: 3px solid #000;
-            border-radius: 5px; z-index: 10;
-        }
-        #jorma::after { /* Jorman lippis */
-            content: ""; position: absolute; top: 0; right: -5px;
-            width: 15px; height: 8px; background: #000;
+        #game-ui {
+            position: absolute; top: 10px; left: 10px; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 15px; border: 2px solid #555;
         }
 
-        /* VIHOLLISET (OPETTAJAT) */
-        .teacher {
-            position: absolute; width: 40px; height: 65px;
-            background: var(--ope); border: 2px solid #fff;
-            z-index: 5; transition: transform 0.1s;
-        }
-        .teacher::before { /* Opettajan lasit */
-            content: "👓"; position: absolute; top: 10px; left: 5px; font-size: 20px;
+        #inventory {
+            position: absolute; bottom: 10px; left: 10px; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #777;
         }
 
-        /* KERÄTTÄVÄT (KOEPAPERIT) */
-        .paper {
-            position: absolute; width: 25px; height: 30px;
-            background: #fff; border: 1px solid #ccc;
-            display: flex; align-items: center; justify-content: center;
-            color: red; font-weight: bold; font-size: 12px;
-        }
+        canvas { display: block; image-rendering: pixelated; }
 
-        /* HUD */
-        #hud {
-            position: absolute; top: 10px; left: 10px; color: #fff;
-            font-size: 20px; z-index: 100; text-shadow: 2px 2px #000;
-        }
-        
-        #floor {
-            position: absolute; bottom: 0; width: 2000px; height: 40px;
-            background: var(--floor); border-top: 4px solid #5d4037;
-        }
-
-        #msg {
+        #alert {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; display: none; z-index: 1000; background: rgba(0,0,0,0.8);
-            padding: 20px; border: 2px solid red;
+            color: #ff3333; font-size: 40px; font-weight: bold; display: none;
+            text-shadow: 0 0 10px black; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div id="hud">JORMA: <span id="score">0</span> | VÄLTÄ OPETTAJIA!</div>
-        <div id="jorma"></div>
-        <div id="floor"></div>
-        <div id="msg">
-            <h1 style="color: red;">OPETTAJA SAI KIINNI!</h1>
-            <p style="color: white;">Jorma joutui jälki-istuntoon.</p>
-            <button onclick="location.reload()" style="margin-top:20px; padding: 10px; cursor:pointer;">Yritä uudelleen</button>
-        </div>
+    <div id="game-ui">
+        <h2>VANKILA: OSASTO 7</h2>
+        <div>Aika: <span id="time-val">08:00</span></div>
+        <div>Tila: <span id="status-val">VAPAA-AIKA</span></div>
+        <div style="color: #e67e22;">ETSI ULOSPÄÄSY!</div>
     </div>
 
+    <div id="inventory">REPPUSSA: <span id="inv-items">Tyhjä</span></div>
+    <div id="alert">VARTIJA NÄKI SINUT!</div>
+
+    <canvas id="gameCanvas"></canvas>
+
 <script>
-    const jorma = document.getElementById('jorma');
-    const container = document.getElementById('game-container');
-    const scoreEl = document.getElementById('score');
-    const msg = document.getElementById('msg');
-    const floor = document.getElementById('floor');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const timeVal = document.getElementById('time-val');
+    const statusVal = document.getElementById('status-val');
+    const invText = document.getElementById('inv-items');
+    const alertText = document.getElementById('alert');
 
-    // Pelin tila
-    let score = 0;
-    let gameActive = true;
-    let jormaPos = { x: 50, y: 300, vx: 0, vy: 0 };
-    let keys = {};
-    let teachers = [];
-    let papers = [];
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    // Vakioarvot
-    const gravity = 0.8;
-    const jumpPower = -15;
-    const speed = 5;
+    // PELIN ASETUKSET
+    const tileSize = 40;
+    let inventory = [];
+    let gameTime = 480; // 08:00 aamulla
 
-    // Kontrollit
-    window.onkeydown = (e) => keys[e.code] = true;
-    window.onkeyup = (e) => keys[e.code] = false;
+    // KARTTA (1 = seinä, 0 = lattia, 2 = selliovi, 3 = pakopiste, 4 = lusikka)
+    const map = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+        [1,0,0,0,2,0,0,0,0,2,0,0,0,0,2,0,0,0,0,1],
+        [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+        [1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,1,1,1,1,0,0,1,1,1,1,0,0,0,0,1],
+        [1,0,0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,0,1],
+        [1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ];
 
-    // Luodaan opettajia
-    function spawnTeacher() {
-        if(!gameActive) return;
-        const t = document.createElement('div');
-        t.className = 'teacher';
-        let x = 800 + Math.random() * 400;
-        t.style.left = x + 'px';
-        t.style.bottom = '40px';
-        container.appendChild(t);
-        teachers.push({ el: t, x: x, speed: 3 + Math.random() * 3 });
-        setTimeout(spawnTeacher, 2000 + Math.random() * 2000);
-    }
+    const player = { x: 1, y: 1, size: 25, speed: 0.1 };
+    const guards = [
+        { x: 5, y: 5, targetX: 18, dir: 1, wait: 0 },
+        { x: 15, y: 9, targetX: 2, dir: -1, wait: 0 }
+    ];
 
-    // Luodaan koepapereita
-    function spawnPaper() {
-        if(!gameActive) return;
-        const p = document.createElement('div');
-        p.className = 'paper';
-        p.innerHTML = "A+";
-        let x = 800;
-        let y = 150 + Math.random() * 150;
-        p.style.left = x + 'px';
-        p.style.bottom = y + 'px';
-        container.appendChild(p);
-        papers.push({ el: p, x: x, y: y });
-        setTimeout(spawnPaper, 1500);
+    const keys = {};
+    window.onkeydown = e => keys[e.key] = true;
+    window.onkeyup = e => keys[e.key] = false;
+
+    function drawMap() {
+        for(let y = 0; y < map.length; y++) {
+            for(let x = 0; x < map[y].length; x++) {
+                let tile = map[y][x];
+                if(tile === 1) ctx.fillStyle = '#2c3e50'; // Seinä
+                else if(tile === 0) ctx.fillStyle = '#7f8c8d'; // Lattia
+                else if(tile === 2) ctx.fillStyle = '#34495e'; // Ovi
+                else if(tile === 3) ctx.fillStyle = '#27ae60'; // Pako
+                else if(tile === 4) ctx.fillStyle = '#f1c40f'; // Lusikka
+
+                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            }
+        }
     }
 
     function update() {
-        if (!gameActive) return;
+        // AIKA
+        gameTime += 0.1;
+        let hours = Math.floor(gameTime / 60) % 24;
+        let mins = Math.floor(gameTime % 60);
+        timeVal.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        
+        if(hours >= 22 || hours < 6) statusVal.innerText = "SELLIT SULJETTU";
+        else statusVal.innerText = "VAPAA-AIKA";
 
-        // Jorman liike
-        if (keys['ArrowLeft']) jormaPos.vx = -speed;
-        else if (keys['ArrowRight']) jormaPos.vx = speed;
-        else jormaPos.vx = 0;
+        // JORMAN LIIKE
+        let nextX = player.x;
+        let nextY = player.y;
 
-        if (keys['Space'] && jormaPos.y === 300) {
-            jormaPos.vy = jumpPower;
-        }
+        if (keys['ArrowUp']) nextY -= player.speed;
+        if (keys['ArrowDown']) nextY += player.speed;
+        if (keys['ArrowLeft']) nextX -= player.speed;
+        if (keys['ArrowRight']) nextX += player.speed;
 
-        // Fysiikka
-        jormaPos.vy += gravity;
-        jormaPos.y += jormaPos.vy;
-        jormaPos.x += jormaPos.vx;
-
-        // Lattiatörmäys
-        if (jormaPos.y > 300) {
-            jormaPos.y = 300;
-            jormaPos.vy = 0;
-        }
         // Seinätörmäys
-        if (jormaPos.x < 0) jormaPos.x = 0;
-        if (jormaPos.x > 760) jormaPos.x = 760;
+        if (map[Math.floor(nextY + 0.2)][Math.floor(nextX + 0.2)] !== 1 &&
+            map[Math.floor(nextY + 0.6)][Math.floor(nextX + 0.6)] !== 1) {
+            player.x = nextX;
+            player.y = nextY;
+        }
 
-        jorma.style.left = jormaPos.x + 'px';
-        jorma.style.top = jormaPos.y + 'px';
+        // Tavaroiden poiminta
+        let ty = Math.floor(player.y + 0.4);
+        let tx = Math.floor(player.x + 0.4);
+        if(map[ty][tx] === 4) {
+            map[ty][tx] = 0;
+            inventory.push("LUSIKKA");
+            invText.innerText = inventory.join(", ");
+        }
 
-        // Opettajien päivitys
-        teachers.forEach((t, i) => {
-            t.x -= t.speed;
-            t.el.style.left = t.x + 'px';
+        // Pakomahdollisuus
+        if(map[ty][tx] === 3 && inventory.includes("LUSIKKA")) {
+            alert("Jorma karkasi lusikalla! VOITIT!");
+            location.reload();
+        }
 
-            // Törmäys Jormaan
-            let jr = jorma.getBoundingClientRect();
-            let tr = t.el.getBoundingClientRect();
-
-            if (jr.right > tr.left && jr.left < tr.right && jr.bottom > tr.top) {
-                // Jos Jorma hyppää opettajan päälle (Mario-tyyli)
-                if (jormaPos.vy > 0 && jr.bottom < tr.top + 20) {
-                    t.el.remove();
-                    teachers.splice(i, 1);
-                    jormaPos.vy = -10; // Kimpoaa ylös
-                    score += 50;
-                    scoreEl.innerText = score;
-                } else {
-                    gameActive = false;
-                    msg.style.display = 'block';
-                }
+        // VARTIJAT
+        guards.forEach(g => {
+            g.x += (0.05 * g.dir);
+            if(Math.abs(g.x - g.targetX) < 0.1) {
+                let temp = g.targetX;
+                g.targetX = g.x - (g.dir * 10);
+                g.dir *= -1;
             }
 
-            if (t.x < -50) {
-                t.el.remove();
-                teachers.splice(i, 1);
-            }
-        });
-
-        // Papereiden päivitys
-        papers.forEach((p, i) => {
-            p.x -= 4;
-            p.el.style.left = p.x + 'px';
-
-            let jr = jorma.getBoundingClientRect();
-            let pr = p.el.getBoundingClientRect();
-
-            if (jr.right > pr.left && jr.left < pr.right && jr.bottom > pr.top && jr.top < pr.bottom) {
-                p.el.remove();
-                papers.splice(i, 1);
-                score += 10;
-                scoreEl.innerText = score;
-            }
-
-            if (p.x < -50) {
-                p.el.remove();
-                papers.splice(i, 1);
+            // Näkökenttä (jos Jorma on lähellä vartijaa)
+            let dist = Math.hypot(g.x - player.x, g.y - player.y);
+            if(dist < 2.5) {
+                alertText.style.display = 'block';
+                player.x = 1; player.y = 1; // Takaisin selliin
+                setTimeout(() => alertText.style.display = 'none', 2000);
             }
         });
 
+        render();
         requestAnimationFrame(update);
     }
 
-    spawnTeacher();
-    spawnPaper();
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawMap();
+
+        // Piirrä Jorma
+        ctx.fillStyle = '#e67e22';
+        ctx.fillRect(player.x * tileSize + 8, player.y * tileSize + 8, player.size, player.size);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(player.x * tileSize + 12, player.y * tileSize + 12, 5, 5); // Silmä
+
+        // Piirrä Vartijat
+        guards.forEach(g => {
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(g.x * tileSize + 5, g.y * tileSize + 5, 30, 30);
+            // Taskulampun valo
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+            ctx.beginPath();
+            ctx.arc(g.x * tileSize + 15, g.y * tileSize + 15, 100, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
     update();
 </script>
 </body>
