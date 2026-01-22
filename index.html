@@ -3,194 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JORMA_PRISON_SIM</title>
+    <title>PRISON_BREAK_REMASTERED</title>
     <style>
-        :root {
-            --wall: #2c3e50;
-            --floor: #7f8c8d;
-            --jorma: #e67e22;
-            --guard: #2980b9;
+        :root { --neon: #00f0ff; --danger: #ff003c; --wall: #1a1a2e; }
+        * { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; }
+        body { background: #050505; font-family: 'Segoe UI', sans-serif; color: white; }
+
+        #ui-layer {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            pointer-events: none; width: calc(100% - 40px);
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; font-family: 'Consolas', monospace; color: white; overflow: hidden; }
-
-        #game-ui {
-            position: absolute; top: 10px; left: 10px; z-index: 100;
-            background: rgba(0,0,0,0.7); padding: 15px; border: 2px solid #555;
+        .stat-box {
+            background: rgba(0,0,0,0.8); border-left: 4px solid var(--neon);
+            padding: 10px 20px; margin-bottom: 10px; display: inline-block;
         }
-
-        #inventory {
-            position: absolute; bottom: 10px; left: 10px; z-index: 100;
-            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #777;
-        }
-
-        canvas { display: block; image-rendering: pixelated; }
-
-        #alert {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #ff3333; font-size: 40px; font-weight: bold; display: none;
-            text-shadow: 0 0 10px black; pointer-events: none;
+        #inventory { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--neon); }
+        
+        canvas { display: block; }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent, black); pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="game-ui">
-        <h2>VANKILA: OSASTO 7</h2>
-        <div>Aika: <span id="time-val">08:00</span></div>
-        <div>Tila: <span id="status-val">VAPAA-AIKA</span></div>
-        <div style="color: #e67e22;">ETSI ULOSPÄÄSY!</div>
+    <div id="ui-layer">
+        <div class="stat-box">
+            <div style="font-size: 12px; color: var(--neon);">LOCATION</div>
+            <div style="font-size: 18px; font-weight: bold;">MAX_SECURITY_WING_7</div>
+        </div><br>
+        <div class="stat-box">
+            <div style="font-size: 12px; color: var(--neon);">OBJECTIVE</div>
+            <div id="objective" style="font-size: 14px;">FIND CUTTERS OR SPOON</div>
+        </div>
     </div>
 
-    <div id="inventory">REPPUSSA: <span id="inv-items">Tyhjä</span></div>
-    <div id="alert">VARTIJA NÄKI SINUT!</div>
-
+    <div id="inventory">📦 INV: <span id="inv-list">EMPTY</span></div>
+    <div id="overlay"></div>
     <canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const timeVal = document.getElementById('time-val');
-    const statusVal = document.getElementById('status-val');
-    const invText = document.getElementById('inv-items');
-    const alertText = document.getElementById('alert');
-
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // PELIN ASETUKSET
-    const tileSize = 40;
+    const TILE = 60;
+    const player = { x: 1.5, y: 1.5, size: 25, speed: 0.12, rot: 0 };
     let inventory = [];
-    let gameTime = 480; // 08:00 aamulla
 
-    // KARTTA (1 = seinä, 0 = lattia, 2 = selliovi, 3 = pakopiste, 4 = lusikka)
-    const map = [
+    // 0 = lattia, 1 = seinä, 2 = kalterit, 3 = ovi, 4 = työkalu, 5 = ulospääsy
+    const world = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
-        [1,0,0,0,2,0,0,0,0,2,0,0,0,0,2,0,0,0,0,1],
-        [1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
-        [1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1],
+        [1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,2,0,0,1,0,2,0,0,1,1,1,1,0,0,0,1],
+        [1,0,0,0,1,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1],
+        [1,1,3,1,1,0,0,1,1,1,1,1,1,1,0,1,1,0,1,1],
         [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,1,1,1,1,0,0,1,1,1,1,0,0,0,0,1],
-        [1,0,0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0,0,1],
-        [1,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,4,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,1],
+        [1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+        [1,1,3,1,1,1,0,0,1,1,1,1,0,0,1,1,3,1,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
-    const player = { x: 1, y: 1, size: 25, speed: 0.1 };
     const guards = [
-        { x: 5, y: 5, targetX: 18, dir: 1, wait: 0 },
-        { x: 15, y: 9, targetX: 2, dir: -1, wait: 0 }
+        { x: 5, y: 5, path: [{x:5,y:5},{x:15,y:5}], targetIdx: 1, speed: 0.04 },
+        { x: 18, y: 10, path: [{x:18,y:10},{x:2,y:10}], targetIdx: 1, speed: 0.06 }
     ];
 
     const keys = {};
-    window.onkeydown = e => keys[e.key] = true;
-    window.onkeyup = e => keys[e.key] = false;
+    window.onkeydown = e => keys[e.code] = true;
+    window.onkeyup = e => keys[e.code] = false;
 
-    function drawMap() {
-        for(let y = 0; y < map.length; y++) {
-            for(let x = 0; x < map[y].length; x++) {
-                let tile = map[y][x];
-                if(tile === 1) ctx.fillStyle = '#2c3e50'; // Seinä
-                else if(tile === 0) ctx.fillStyle = '#7f8c8d'; // Lattia
-                else if(tile === 2) ctx.fillStyle = '#34495e'; // Ovi
-                else if(tile === 3) ctx.fillStyle = '#27ae60'; // Pako
-                else if(tile === 4) ctx.fillStyle = '#f1c40f'; // Lusikka
+    function drawWorld() {
+        for(let y = 0; y < world.length; y++) {
+            for(let x = 0; x < world[y].length; x++) {
+                let t = world[y][x];
+                let px = x * TILE; let py = y * TILE;
 
-                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-                ctx.strokeStyle = "rgba(0,0,0,0.1)";
-                ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                // Lattia (betoni)
+                ctx.fillStyle = '#1e1e24';
+                ctx.fillRect(px, py, TILE, TILE);
+                
+                if(t === 1) { // Seinä
+                    let grad = ctx.createLinearGradient(px, py, px+TILE, py+TILE);
+                    grad.addColorStop(0, '#2c3e50'); grad.addColorStop(1, '#000000');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(px, py, TILE, TILE);
+                    ctx.strokeStyle = '#34495e'; ctx.strokeRect(px, py, TILE, TILE);
+                } else if(t === 2) { // Kalterit
+                    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 4;
+                    for(let i=10; i<TILE; i+=15) {
+                        ctx.beginPath(); ctx.moveTo(px+i, py); ctx.lineTo(px+i, py+TILE); ctx.stroke();
+                    }
+                } else if(t === 3) { // Ovi
+                    ctx.fillStyle = '#4a2c2a'; ctx.fillRect(px+5, py+5, TILE-10, TILE-10);
+                } else if(t === 4) { // Esine (lusikka)
+                    ctx.fillStyle = '#00f0ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#00f0ff';
+                    ctx.fillRect(px+TILE/3, py+TILE/3, TILE/4, TILE/4);
+                    ctx.shadowBlur = 0;
+                } else if(t === 5) { // Exit
+                    ctx.fillStyle = '#2ecc71'; ctx.globalAlpha = 0.3;
+                    ctx.fillRect(px, py, TILE, TILE); ctx.globalAlpha = 1.0;
+                }
             }
         }
     }
 
     function update() {
-        // AIKA
-        gameTime += 0.1;
-        let hours = Math.floor(gameTime / 60) % 24;
-        let mins = Math.floor(gameTime % 60);
-        timeVal.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-        
-        if(hours >= 22 || hours < 6) statusVal.innerText = "SELLIT SULJETTU";
-        else statusVal.innerText = "VAPAA-AIKA";
+        if(keys['ArrowUp']) { player.y -= player.speed; player.rot = -Math.PI/2; }
+        if(keys['ArrowDown']) { player.y += player.speed; player.rot = Math.PI/2; }
+        if(keys['ArrowLeft']) { player.x -= player.speed; player.rot = Math.PI; }
+        if(keys['ArrowRight']) { player.x += player.speed; player.rot = 0; }
 
-        // JORMAN LIIKE
-        let nextX = player.x;
-        let nextY = player.y;
-
-        if (keys['ArrowUp']) nextY -= player.speed;
-        if (keys['ArrowDown']) nextY += player.speed;
-        if (keys['ArrowLeft']) nextX -= player.speed;
-        if (keys['ArrowRight']) nextX += player.speed;
-
-        // Seinätörmäys
-        if (map[Math.floor(nextY + 0.2)][Math.floor(nextX + 0.2)] !== 1 &&
-            map[Math.floor(nextY + 0.6)][Math.floor(nextX + 0.6)] !== 1) {
-            player.x = nextX;
-            player.y = nextY;
+        // Törmäys
+        let tx = Math.floor(player.x); let ty = Math.floor(player.y);
+        if(world[ty][tx] === 1) { // Seinään osui, työnnä takaisin
+             player.x = Math.round(player.x); player.y = Math.round(player.y);
         }
 
-        // Tavaroiden poiminta
-        let ty = Math.floor(player.y + 0.4);
-        let tx = Math.floor(player.x + 0.4);
-        if(map[ty][tx] === 4) {
-            map[ty][tx] = 0;
-            inventory.push("LUSIKKA");
-            invText.innerText = inventory.join(", ");
+        // Esineen poiminta
+        if(world[ty][tx] === 4) {
+            world[ty][tx] = 0; inventory.push("SPOON");
+            document.getElementById('inv-list').innerText = "SPOON";
+            document.getElementById('objective').innerText = "GO TO THE EXIT (GREEN AREA)";
         }
 
-        // Pakomahdollisuus
-        if(map[ty][tx] === 3 && inventory.includes("LUSIKKA")) {
-            alert("Jorma karkasi lusikalla! VOITIT!");
-            location.reload();
+        // Voitto
+        if(world[ty][tx] === 5 && inventory.includes("SPOON")) {
+            alert("FREEDOM! Jorma escaped."); location.reload();
         }
 
-        // VARTIJAT
+        // Vartijoiden AI
         guards.forEach(g => {
-            g.x += (0.05 * g.dir);
-            if(Math.abs(g.x - g.targetX) < 0.1) {
-                let temp = g.targetX;
-                g.targetX = g.x - (g.dir * 10);
-                g.dir *= -1;
+            let target = g.path[g.targetIdx];
+            let dx = target.x - g.x; let dy = target.y - g.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if(dist < 0.1) {
+                g.targetIdx = (g.targetIdx + 1) % g.path.length;
+            } else {
+                g.x += (dx/dist) * g.speed; g.y += (dy/dist) * g.speed;
             }
 
-            // Näkökenttä (jos Jorma on lähellä vartijaa)
-            let dist = Math.hypot(g.x - player.x, g.y - player.y);
-            if(dist < 2.5) {
-                alertText.style.display = 'block';
-                player.x = 1; player.y = 1; // Takaisin selliin
-                setTimeout(() => alertText.style.display = 'none', 2000);
+            // Näkökenttä (Game Over jos kiinni)
+            let pDist = Math.sqrt((g.x-player.x)**2 + (g.y-player.y)**2);
+            if(pDist < 1.5) {
+                player.x = 1.5; player.y = 1.5; // Takaisin alkuun
             }
         });
 
-        render();
+        draw();
         requestAnimationFrame(update);
     }
 
-    function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        drawMap();
+    function draw() {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        drawWorld();
 
-        // Piirrä Jorma
-        ctx.fillStyle = '#e67e22';
-        ctx.fillRect(player.x * tileSize + 8, player.y * tileSize + 8, player.size, player.size);
-        ctx.fillStyle = 'white';
-        ctx.fillRect(player.x * tileSize + 12, player.y * tileSize + 12, 5, 5); // Silmä
+        // Jorma (Pelaaja)
+        ctx.save();
+        ctx.translate(player.x * TILE, player.y * TILE);
+        ctx.rotate(player.rot);
+        ctx.fillStyle = '#e67e22'; // Oranssi vankiasu
+        ctx.fillRect(-15, -15, 30, 30);
+        ctx.fillStyle = 'black'; ctx.fillRect(10, -10, 5, 5); ctx.fillRect(10, 5, 5, 5);
+        ctx.restore();
 
-        // Piirrä Vartijat
+        // Vartijat ja niiden taskulamput
         guards.forEach(g => {
-            ctx.fillStyle = '#2980b9';
-            ctx.fillRect(g.x * tileSize + 5, g.y * tileSize + 5, 30, 30);
-            // Taskulampun valo
-            ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
-            ctx.beginPath();
-            ctx.arc(g.x * tileSize + 15, g.y * tileSize + 15, 100, 0, Math.PI * 2);
-            ctx.fill();
+            let gx = g.x * TILE; let gy = g.y * TILE;
+            
+            // Valokeila
+            let beam = ctx.createRadialGradient(gx, gy, 10, gx, gy, 120);
+            beam.addColorStop(0, 'rgba(255, 255, 0, 0.4)');
+            beam.addColorStop(1, 'rgba(255, 255, 0, 0)');
+            ctx.fillStyle = beam;
+            ctx.beginPath(); ctx.arc(gx, gy, 120, 0, Math.PI*2); ctx.fill();
+
+            // Vartija
+            ctx.fillStyle = '#2980b9'; ctx.fillRect(gx-15, gy-15, 30, 30);
+            ctx.strokeStyle = 'white'; ctx.strokeRect(gx-15, gy-15, 30, 30);
         });
+
+        // Pimeys-efekti (vain pelaajan ympärillä valoa)
+        ctx.globalCompositeOperation = 'multiply';
+        let light = ctx.createRadialGradient(player.x*TILE, player.y*TILE, 50, player.x*TILE, player.y*TILE, 300);
+        light.addColorStop(0, 'rgba(255,255,255,1)');
+        light.addColorStop(1, 'rgba(20,20,30,1)');
+        ctx.fillStyle = light;
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
     }
 
     update();
